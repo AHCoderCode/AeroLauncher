@@ -1,48 +1,68 @@
 # AeroOS Windows Edition
 
-A lightweight native Windows desktop companion for the HP ProBook 4520s target. Windows remains the actual operating system.
+**AeroOS Windows Edition 0.1.0** is a lightweight, native WPF desktop companion for Windows 10. Windows remains the actual operating system: AeroOS runs in a normal resizable app window and does not replace Windows Explorer, the taskbar, Winlogon, the Windows shell, the bootloader or any installed driver.
 
-> **Strict Windows-preservation rule:** AeroOS must never erase, format, repartition, reset, reinstall or replace the existing Windows installation. It must not modify boot files, services, drivers, security settings or global registry configuration.
+> **Windows-preservation rule:** this project does not erase, format, repartition, reset, reinstall or replace Windows. It is not an OS installer or a Windows debloater.
 
-## Add the source package and build the app
+## Current implementation
 
-The repository is initialized. To import and build the complete WPF project:
-
-1. Download the source ZIP from the ChatGPT conversation attachment named `AeroOS-Windows-source-v0.1.0.zip`.
-2. Open this repository on GitHub.
-3. Select **Add file → Upload files**.
-4. Upload `AeroOS-Windows-source-v0.1.0.zip` into the repository root (not into a folder).
-5. Commit the upload to `main`.
-6. Open the **Actions** tab and select **Import, build and package AeroOS Windows Edition**.
-7. Open the latest run. Wait until every step has a green check and the run says **Success**.
-8. In the run's **Artifacts** area, download `AeroOS-Windows-v0.1.0`.
-
-The import workflow extracts the source and builds it on a GitHub-hosted Windows runner. The resulting workflow artifact contains another ZIP called `AeroOS-Windows-v0.1.0.zip`. Extract that inner ZIP to a normal folder. It contains `Install-User.ps1`, `Uninstall-User.ps1`, and a `publish` folder. Follow `docs/INSTALL.md` for installation.
-
-If a run fails and a workflow fix is committed afterward, start a **new** run from the updated workflow: open **Actions → Import, build and package AeroOS Windows Edition → Run workflow**, select `main`, then click **Run workflow**. Do not use **Re-run jobs** for an old run when its workflow definition itself has changed; that can replay the previous revision.
-
-Do not download or install an artifact from a failed run.
-
-## Architecture
-
-- Native WPF app targeting .NET Framework 4.8.
-- Start Menu shortcut discovery and native Windows application launching.
-- AeroOS-only preferences, theme, accent, pins and recent apps.
-- Real Explorer, Task Manager and Windows Settings integrations.
-- Read-only WMI/PowerShell hardware inventory.
-- User-profile-only installer and guarded uninstaller.
+- Native WPF desktop window with Overview, Applications, Personalization, Control Center and About pages.
+- Discovers `.lnk` app shortcuts from the current user's and all-users' Start Menu folders.
+- Searches discovered app names/categories, launches shortcuts through the Windows shell, and stores AeroOS pins/recent launches.
+- Opens the real Windows File Explorer, Task Manager and native Settings pages.
+- Reads basic CPU, GPU, memory, Windows and system-drive information through WMI.
+- Dark/light app theme, accent selection and AeroOS-only workspace background image.
+- AeroOS-only Performance Mode that suppresses the content background image; it does not tune Windows services or global performance settings.
+- User-level installation/uninstallation scripts with marker/path checks, no administrator requirement and no startup persistence.
+- Read-only PowerShell hardware audit script.
 - GitHub Actions Windows build workflow.
 
-## Safety boundaries
+## Explicitly not implemented
 
-AeroOS runs in a normal resizable window. It does not replace Explorer, the taskbar, Winlogon or the Windows shell. It has no service, bootloader, partitioning or global system-tuning component. Installation is user-level and creates only AeroOS-owned program files and shortcuts. Windows files, existing applications, drivers, services, boot configuration and user documents are outside the installer's scope.
+This first build does **not** replace the Windows desktop or taskbar, provide system-tray integration, manage notifications, change Windows wallpaper/theme, alter Windows power plans, disable services/startup apps, install drivers, apply undocumented registry tweaks, or claim measured performance gains. Those features require separate design and physical-device tests and are intentionally not simulated.
 
-The included diagnostic script is read-only. Do not apply optimization changes based on assumptions; inspect the actual hardware report first.
+## Hardware context
 
-## Existing Linux AeroOS
+The existing Linux AeroOS repository README documents an HP ProBook 4520s target with an Intel Core i5-480M, 8 GB RAM, Legacy BIOS and a user-reported Radeon HD 64xx-family GPU. Those are repository-documented target details, not a live scan of the Windows installation. Run the included diagnostic report to confirm the actual hardware before making any optimization recommendations.
 
-The separate [AHCoderCode/Aero-Os](https://github.com/AHCoderCode/Aero-Os) repository remains untouched. This Windows Edition is an independent project.
+## Quick start
 
-## Validation status
+1. Build on Windows with Visual Studio 2022, the .NET desktop development workload and the .NET Framework 4.8 Developer Pack.
+2. Run `scripts\Build-Release.ps1` from a normal PowerShell window.
+3. Extract `artifacts\AeroOS-Windows-v0.1.0.zip`.
+4. Run `Install-User.ps1` without Administrator privileges.
+5. Launch AeroOS from the Start Menu.
 
-The source package's XML and ZIP structure were checked in the preparation workspace. The project still needs a successful Windows-runner build, then physical HP ProBook testing of UI behavior, devices and performance. No measured performance gain is claimed.
+See [docs/PHASE-1-REPORT.md](docs/PHASE-1-REPORT.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/INSTALL.md](docs/INSTALL.md), [docs/SAFETY.md](docs/SAFETY.md), [docs/TEST-PLAN.md](docs/TEST-PLAN.md) and [docs/CURRENT-COMPATIBILITY.md](docs/CURRENT-COMPATIBILITY.md).
+
+## Build output through GitHub Actions
+
+After this source is pushed to `main`, the **Build AeroOS Windows Edition** workflow compiles on a Windows runner and uploads `AeroOS-Windows-v0.1.0.zip` as a 14-day workflow artifact. The workflow does not publish a public release or deploy anything.
+
+## Project layout
+
+```text
+AeroOS-Windows/
+├── .github/workflows/build-windows.yml
+├── docs/
+├── scripts/
+│   ├── Build-Release.ps1
+│   ├── Get-AeroOSHardwareReport.ps1
+│   ├── Install-User.ps1
+│   └── Uninstall-User.ps1
+├── src/AeroOS.Windows/
+│   ├── Models/
+│   ├── Services/
+│   ├── App.xaml
+│   ├── MainWindow.xaml
+│   └── AeroOS.Windows.csproj
+└── AeroOS.sln
+```
+
+## Security and privacy
+
+No telemetry, analytics, account sign-in, password capture, or network service is included. Application preferences are stored at `%LOCALAPPDATA%\AeroOSWindows\settings.json`. Review scripts before running them. The current installer is unsigned.
+
+## Status
+
+Initial source implementation prepared. The project has not yet been built or run on Windows in this environment. The WPF application, diagnostic script, installer and uninstaller still require validation on the HP ProBook itself. No performance benchmark is claimed.
