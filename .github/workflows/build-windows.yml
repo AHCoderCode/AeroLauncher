@@ -1,0 +1,46 @@
+name: Build AeroOS Windows Edition
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'AeroOS.sln'
+      - 'src/**'
+      - 'scripts/**'
+      - '.github/workflows/build-windows.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'AeroOS.sln'
+      - 'src/**'
+      - 'scripts/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Verify source and diagnostic safety
+        shell: pwsh
+        run: .\scripts\Verify-Source.ps1
+
+      - name: Build and package
+        shell: pwsh
+        run: .\scripts\Build-Release.ps1
+
+      - name: Upload portable installation bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: AeroOS-Windows-v0.1.0
+          path: artifacts/AeroOS-Windows-v0.1.0.zip
+          if-no-files-found: error
+          retention-days: 14
