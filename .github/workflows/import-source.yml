@@ -74,6 +74,57 @@ jobs:
             throw 'The malformed quoted Platform argument is still present.'
           }
 
+      - name: Fix WPF compile references and card containers
+        shell: pwsh
+        run: |
+          $projectPath = Join-Path $PWD 'src/AeroOS.Windows/AeroOS.Windows.csproj'
+          if (-not (Test-Path -LiteralPath $projectPath -PathType Leaf)) {
+            throw 'AeroOS.Windows.csproj is missing after extraction.'
+          }
+
+          $project = Get-Content -LiteralPath $projectPath -Raw
+          $xmlAnchor = '<Reference Include="System.Runtime.Serialization" />'
+          if (-not $project.Contains($xmlAnchor)) {
+            throw 'Could not find the expected assembly-reference insertion point.'
+          }
+          if (-not $project.Contains('<Reference Include="System.Xml" />')) {
+            $project = $project.Replace($xmlAnchor, $xmlAnchor + [Environment]::NewLine + '    <Reference Include="System.Xml" />')
+            Set-Content -LiteralPath $projectPath -Value $project -Encoding utf8
+          }
+
+          $codePath = Join-Path $PWD 'src/AeroOS.Windows/MainWindow.xaml.cs'
+          if (-not (Test-Path -LiteralPath $codePath -PathType Leaf)) {
+            throw 'MainWindow.xaml.cs is missing after extraction.'
+          }
+
+          $code = Get-Content -LiteralPath $codePath -Raw
+          $cardFixes = @(
+            @{ Old = 'themeCard.Children.Add('; New = '((StackPanel)themeCard.Child).Children.Add('; Count = 3 },
+            @{ Old = 'performanceCard.Children.Add('; New = '((StackPanel)performanceCard.Child).Children.Add('; Count = 1 },
+            @{ Old = 'wallpaperCard.Children.Add('; New = '((StackPanel)wallpaperCard.Child).Children.Add('; Count = 2 },
+            @{ Old = 'resetCard.Children.Add('; New = '((StackPanel)resetCard.Child).Children.Add('; Count = 1 }
+          )
+
+          foreach ($fix in $cardFixes) {
+            $count = ([regex]::Matches($code, [regex]::Escape($fix.Old))).Count
+            if ($count -eq $fix.Count) {
+              $code = $code.Replace($fix.Old, $fix.New)
+            }
+            elseif ($count -ne 0) {
+              throw "Unexpected number of '$($fix.Old)' occurrences: $count"
+            }
+          }
+
+          if ($code.Contains('themeCard.Children.Add(') -or
+              $code.Contains('performanceCard.Children.Add(') -or
+              $code.Contains('wallpaperCard.Children.Add(') -or
+              $code.Contains('resetCard.Children.Add(')) {
+            throw 'A Border.Children compile error pattern remains in MainWindow.xaml.cs.'
+          }
+
+          Set-Content -LiteralPath $codePath -Value $code -Encoding utf8
+          Write-Host 'Added System.Xml reference and routed card content through each Border.Child StackPanel.'
+
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
 
