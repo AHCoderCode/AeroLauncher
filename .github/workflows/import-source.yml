@@ -54,18 +54,19 @@ jobs:
 
           $buildScript = Get-Content -LiteralPath $buildScriptPath -Raw
           $badArgument = " '/p:Platform=`"Any CPU`"'"
+          $fixedArgument = " '/p:Platform=Any CPU'"
           $occurrences = ([regex]::Matches($buildScript, [regex]::Escape($badArgument))).Count
 
           if ($occurrences -eq 2) {
-            $buildScript = $buildScript.Replace($badArgument, '')
+            $buildScript = $buildScript.Replace($badArgument, $fixedArgument)
             Set-Content -LiteralPath $buildScriptPath -Value $buildScript -Encoding utf8
-            Write-Host 'Removed the incorrectly quoted Platform property from both MSBuild calls.'
+            Write-Host 'Corrected the Platform property in both MSBuild calls without embedding literal quotes.'
           }
-          elseif ($occurrences -eq 0 -and -not $buildScript.Contains('/p:Platform="Any CPU"')) {
+          elseif ($occurrences -eq 0 -and $buildScript.Contains($fixedArgument.TrimStart())) {
             Write-Host 'The platform argument is already corrected.'
           }
           else {
-            throw "Expected exactly two malformed platform arguments; found $occurrences. Stopping rather than making an uncertain edit."
+            throw "Expected exactly two malformed platform arguments or an already-corrected argument; found $occurrences. Stopping rather than making an uncertain edit."
           }
 
           if ($buildScript.Contains('/p:Platform="Any CPU"')) {
