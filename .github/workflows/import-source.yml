@@ -44,6 +44,34 @@ jobs:
           }
           Write-Host 'Complete source tree extracted, including .github workflow files.'
 
+      - name: Correct MSBuild solution platform argument
+        shell: pwsh
+        run: |
+          $buildScriptPath = Join-Path $PWD 'scripts/Build-Release.ps1'
+          if (-not (Test-Path -LiteralPath $buildScriptPath -PathType Leaf)) {
+            throw 'Build-Release.ps1 is missing after source extraction.'
+          }
+
+          $buildScript = Get-Content -LiteralPath $buildScriptPath -Raw
+          $badArgument = " '/p:Platform=`"Any CPU`"'"
+          $occurrences = ([regex]::Matches($buildScript, [regex]::Escape($badArgument))).Count
+
+          if ($occurrences -eq 2) {
+            $buildScript = $buildScript.Replace($badArgument, '')
+            Set-Content -LiteralPath $buildScriptPath -Value $buildScript -Encoding utf8
+            Write-Host 'Removed the incorrectly quoted Platform property from both MSBuild calls.'
+          }
+          elseif ($occurrences -eq 0 -and -not $buildScript.Contains('/p:Platform="Any CPU"')) {
+            Write-Host 'The platform argument is already corrected.'
+          }
+          else {
+            throw "Expected exactly two malformed platform arguments; found $occurrences. Stopping rather than making an uncertain edit."
+          }
+
+          if ($buildScript.Contains('/p:Platform="Any CPU"')) {
+            throw 'The malformed quoted Platform argument is still present.'
+          }
+
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
 
