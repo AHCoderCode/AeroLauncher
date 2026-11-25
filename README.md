@@ -19,7 +19,9 @@ The repository is initialized. To import and build the complete WPF project:
 
 The import workflow extracts the source and builds it on a GitHub-hosted Windows runner. The resulting workflow artifact contains another ZIP called `AeroOS-Windows-v0.1.0.zip`. Extract that inner ZIP to a normal folder. It contains `Install-User.ps1`, `Uninstall-User.ps1`, and a `publish` folder. Follow `docs/INSTALL.md` for installation.
 
-If a run fails, open it and inspect the failed step's log. Do not download or install an artifact from a failed run.
+If a run fails and a workflow fix is committed afterward, start a **new** run from the updated workflow: open **Actions → Import, build and package AeroOS Windows Edition → Run workflow**, select `main`, then click **Run workflow**. Do not use **Re-run jobs** for an old run when its workflow definition itself has changed; that can replay the previous revision.
+
+Do not download or install an artifact from a failed run.
 
 ## Architecture
 
