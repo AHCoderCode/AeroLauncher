@@ -1,4 +1,4 @@
-name: Import packaged AeroOS source
+name: Import, build and package AeroOS Windows Edition
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  import-source:
+  import-build:
     runs-on: windows-latest
     steps:
       - name: Check out repository
@@ -24,7 +24,7 @@ jobs:
         run: |
           $archive = Join-Path $PWD 'AeroOS-Windows-source-v0.1.0.zip'
           if (-not (Test-Path -LiteralPath $archive -PathType Leaf)) {
-            throw 'Source archive is missing; no repository files were changed.'
+            throw 'Source archive is missing; no repository source files were changed.'
           }
 
           $temp = Join-Path $env:RUNNER_TEMP 'aeroos-source-import'
@@ -34,7 +34,6 @@ jobs:
 
           New-Item -ItemType Directory -Path $temp | Out-Null
           Expand-Archive -LiteralPath $archive -DestinationPath $temp
-
           $project = Join-Path $temp 'AeroOS-Windows'
           if (-not (Test-Path -LiteralPath $project -PathType Container)) {
             throw 'The archive does not contain the expected AeroOS-Windows project folder.'
@@ -43,7 +42,18 @@ jobs:
           Get-ChildItem -LiteralPath $project -Force | ForEach-Object {
             Copy-Item -LiteralPath $_.FullName -Destination $PWD -Recurse -Force
           }
-          Write-Host 'The archived AeroOS source tree, including hidden project configuration, has been copied into the repository.'
+          Write-Host 'Complete source tree extracted, including .github workflow files.'
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Verify source safety and required project files
+        shell: pwsh
+        run: .\scripts\Verify-Source.ps1
+
+      - name: Build and create user-install bundle
+        shell: pwsh
+        run: .\scripts\Build-Release.ps1
 
       - name: Commit imported source tree
         shell: pwsh
@@ -52,9 +62,17 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add --all
           git diff --cached --quiet
-          if ($LASTEXITCODE -eq 0) {
-            Write-Host 'No source-tree changes were needed.'
-            exit 0
+          if ($LASTEXITCODE -ne 0) {
+            git commit -m 'Import AeroOS Windows Edition source tree'
+            git push
+          } else {
+            Write-Host 'Source tree already matches this repository.'
           }
-          git commit -m 'Import complete AeroOS Windows Edition source tree'
-          git push
+
+      - name: Upload portable installation bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: AeroOS-Windows-v0.1.0
+          path: artifacts/AeroOS-Windows-v0.1.0.zip
+          if-no-files-found: error
+          retention-days: 14
