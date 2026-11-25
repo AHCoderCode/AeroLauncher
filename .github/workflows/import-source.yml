@@ -40,10 +40,12 @@ jobs:
             throw 'The archive does not contain the expected AeroOS-Windows project folder.'
           }
 
-          Get-ChildItem -LiteralPath $project -Force | ForEach-Object {
-            Copy-Item -LiteralPath $_.FullName -Destination $PWD -Recurse -Force
-          }
-          Write-Host 'Complete source tree extracted, including .github workflow files.'
+          Get-ChildItem -LiteralPath $project -Force |
+            Where-Object { $_.Name -ne '.github' } |
+            ForEach-Object {
+              Copy-Item -LiteralPath $_.FullName -Destination $PWD -Recurse -Force
+            }
+          Write-Host 'Application source tree extracted. Existing repository workflows are preserved and managed separately.'
 
       - name: Correct MSBuild solution platform argument
         shell: pwsh
