@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'AeroOS-Windows-source-v0.1.0.zip'
+      - '.build-request'
   workflow_dispatch:
 
 permissions:
@@ -89,6 +90,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          if (Test-Path -LiteralPath '.build-request') { Remove-Item -LiteralPath '.build-request' -Force }
           git add --all
           git diff --cached --quiet
           if ($LASTEXITCODE -ne 0) {
