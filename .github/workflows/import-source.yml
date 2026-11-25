@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'source-parts/08.b64'
+      - 'AeroOS-Windows-source-v0.1.0.zip'
   workflow_dispatch:
 
 permissions:
@@ -19,24 +19,13 @@ jobs:
         with:
           persist-credentials: true
 
-      - name: Reconstruct and extract complete project
+      - name: Extract complete project tree
         shell: pwsh
         run: |
-          $partsDir = Join-Path $PWD 'source-parts'
-          $partNames = @('00.b64','01.b64','02.b64','03.b64','04.b64','05.b64','06.b64','07.b64','08.b64')
-          $encoded = New-Object System.Text.StringBuilder
-
-          foreach ($partName in $partNames) {
-            $partPath = Join-Path $partsDir $partName
-            if (-not (Test-Path -LiteralPath $partPath -PathType Leaf)) {
-              throw "Required source archive segment is missing: $partName"
-            }
-            [void]$encoded.Append((Get-Content -LiteralPath $partPath -Raw).Trim())
-          }
-
-          $bytes = [Convert]::FromBase64String($encoded.ToString())
           $archive = Join-Path $PWD 'AeroOS-Windows-source-v0.1.0.zip'
-          [System.IO.File]::WriteAllBytes($archive, $bytes)
+          if (-not (Test-Path -LiteralPath $archive -PathType Leaf)) {
+            throw 'Source archive is missing; no repository files were changed.'
+          }
 
           $temp = Join-Path $env:RUNNER_TEMP 'aeroos-source-import'
           if (Test-Path -LiteralPath $temp) {
@@ -45,14 +34,14 @@ jobs:
 
           New-Item -ItemType Directory -Path $temp | Out-Null
           Expand-Archive -LiteralPath $archive -DestinationPath $temp
+
           $project = Join-Path $temp 'AeroOS-Windows'
           if (-not (Test-Path -LiteralPath $project -PathType Container)) {
-            throw 'The source archive does not contain the expected project folder.'
+            throw 'The archive does not contain the expected AeroOS-Windows project folder.'
           }
 
           Copy-Item -Path (Join-Path $project '*') -Destination $PWD -Recurse -Force
-          Remove-Item -LiteralPath $partsDir -Recurse -Force
-          Write-Host 'The complete AeroOS source tree was extracted into the repository.'
+          Write-Host 'The archived AeroOS source tree has been copied into the repository.'
 
       - name: Commit imported source tree
         shell: pwsh
