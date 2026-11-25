@@ -4,23 +4,22 @@ A lightweight native Windows desktop companion for the HP ProBook 4520s target. 
 
 > **Strict Windows-preservation rule:** AeroOS must never erase, format, repartition, reset, reinstall or replace the existing Windows installation. It must not modify boot files, services, drivers, security settings or global registry configuration.
 
-## Project source
+## Add the source package and build the app
 
-The complete starter source package is prepared as **AeroOS Windows Edition v0.1.0**. It contains the WPF application, build solution, scripts, installer/uninstaller, diagnostics, documentation, verification script and Windows CI workflow.
+The repository is initialized. To import and build the complete WPF project:
 
-The package must be added to this repository once as `AeroOS-Windows-source-v0.1.0.zip`. A repository workflow then extracts the contents into the normal source tree and commits the files automatically.
-
-### Add the source package (one file upload)
-
-1. Download the prepared source ZIP from the ChatGPT conversation attachment.
-2. Open the **AeroLauncher** repository on GitHub.
+1. Download the source ZIP from the ChatGPT conversation attachment named `AeroOS-Windows-source-v0.1.0.zip`.
+2. Open this repository on GitHub.
 3. Select **Add file → Upload files**.
-4. Upload the file named exactly `AeroOS-Windows-source-v0.1.0.zip` to the repository root (not inside a folder).
+4. Upload `AeroOS-Windows-source-v0.1.0.zip` into the repository root (not into a folder).
 5. Commit the upload to `main`.
-6. Open **Actions** and check **Import packaged AeroOS source**. It will unpack the source tree, including hidden configuration files, and commit the files.
-7. The **Build AeroOS Windows Edition** workflow then runs on a Windows runner. Its artifact is available from the successful workflow run.
+6. Open the **Actions** tab and select **Import, build and package AeroOS Windows Edition**.
+7. Open the latest run. Wait until every step has a green check and the run says **Success**.
+8. In the run's **Artifacts** area, download `AeroOS-Windows-v0.1.0`.
 
-The import workflow checks for the expected archive and project folder before copying. It does not run any commands on your laptop or alter your Windows installation.
+The import workflow extracts the source and builds it on a GitHub-hosted Windows runner. The resulting workflow artifact contains another ZIP called `AeroOS-Windows-v0.1.0.zip`. Extract that inner ZIP to a normal folder. It contains `Install-User.ps1`, `Uninstall-User.ps1`, and a `publish` folder. Follow `docs/INSTALL.md` for installation.
+
+If a run fails, open it and inspect the failed step's log. Do not download or install an artifact from a failed run.
 
 ## Architecture
 
@@ -30,7 +29,7 @@ The import workflow checks for the expected archive and project folder before co
 - Real Explorer, Task Manager and Windows Settings integrations.
 - Read-only WMI/PowerShell hardware inventory.
 - User-profile-only installer and guarded uninstaller.
-- Windows build/verification workflow.
+- GitHub Actions Windows build workflow.
 
 ## Safety boundaries
 
@@ -44,4 +43,4 @@ The separate [AHCoderCode/Aero-Os](https://github.com/AHCoderCode/Aero-Os) repos
 
 ## Validation status
 
-Project XML and ZIP structure were checked in the preparation workspace. This Linux workspace cannot compile or execute WPF binaries. Windows compilation, runtime behavior and physical HP ProBook hardware/performance tests remain pending; no measured performance gain is claimed.
+The source package's XML and ZIP structure were checked in the preparation workspace. The project still needs a successful Windows-runner build, then physical HP ProBook testing of UI behavior, devices and performance. No measured performance gain is claimed.
