@@ -1,0 +1,59 @@
+name: Import packaged AeroOS source
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'AeroOS-Windows-source-v0.1.0.zip'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import-source:
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Extract complete project tree
+        shell: pwsh
+        run: |
+          $archive = Join-Path $PWD 'AeroOS-Windows-source-v0.1.0.zip'
+          if (-not (Test-Path -LiteralPath $archive -PathType Leaf)) {
+            throw 'Source archive is missing; no repository files were changed.'
+          }
+
+          $temp = Join-Path $env:RUNNER_TEMP 'aeroos-source-import'
+          if (Test-Path -LiteralPath $temp) {
+            throw "Temporary extraction path unexpectedly exists: $temp"
+          }
+
+          New-Item -ItemType Directory -Path $temp | Out-Null
+          Expand-Archive -LiteralPath $archive -DestinationPath $temp
+
+          $project = Join-Path $temp 'AeroOS-Windows'
+          if (-not (Test-Path -LiteralPath $project -PathType Container)) {
+            throw 'The archive does not contain the expected AeroOS-Windows project folder.'
+          }
+
+          Copy-Item -Path (Join-Path $project '*') -Destination $PWD -Recurse -Force
+          Write-Host 'The archived AeroOS source tree has been copied into the repository.'
+          Get-ChildItem -Force | Select-Object Name, Mode
+
+      - name: Commit imported source tree
+        shell: pwsh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add --all
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host 'No source-tree changes were needed.'
+            exit 0
+          }
+          git commit -m 'Import complete AeroOS Windows Edition source tree'
+          git push
