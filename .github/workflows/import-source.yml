@@ -40,8 +40,10 @@ jobs:
             throw 'The archive does not contain the expected AeroOS-Windows project folder.'
           }
 
-          Copy-Item -Path (Join-Path $project '*') -Destination $PWD -Recurse -Force
-          Write-Host 'The archived AeroOS source tree has been copied into the repository.'
+          Get-ChildItem -LiteralPath $project -Force | ForEach-Object {
+            Copy-Item -LiteralPath $_.FullName -Destination $PWD -Recurse -Force
+          }
+          Write-Host 'The archived AeroOS source tree, including hidden project configuration, has been copied into the repository.'
 
       - name: Commit imported source tree
         shell: pwsh
