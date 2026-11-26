@@ -45,7 +45,7 @@ jobs:
         with:
           name: AeroOS-Windows-v0.4.0
           path: |
-            artifacts/AeroOS-Windows-v0.3.0.zip
-            artifacts/AeroOS-Windows-v0.3.0.zip.sha256
+            artifacts/AeroOS-Windows-v0.4.0.zip
+            artifacts/AeroOS-Windows-v0.4.0.zip.sha256
           if-no-files-found: error
           retention-days: 14
