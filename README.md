@@ -52,7 +52,7 @@ The optional wallpaper path is used only by the AeroOS window. It does not chang
 
 ## Build status
 
-Version 0.4.0 passed the GitHub Actions static source checks and Windows Release compilation. The portable ZIP was generated and its SHA-256 matched the build output; the ZIP integrity and contents were inspected. Interactive runtime behaviour, display scaling/layout, Windows Defender scanning, and real CPU/RAM/battery impact still need testing on the HP ProBook. No malware-free certification or measured performance result is claimed.
+Version 0.3.0 passed the GitHub Actions static source checks and Windows Release compilation. Version 0.4.0 contains additional source changes and its own Windows build must be confirmed in the latest GitHub Actions run before using its package. Interactive runtime behaviour, display scaling/layout, Windows Defender scanning, and real CPU/RAM/battery impact still need testing on the HP ProBook. No malware-free certification or measured performance result is claimed.
 
 
 ## 0.4.0 usability improvements
