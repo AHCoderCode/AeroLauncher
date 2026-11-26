@@ -1,25 +1,27 @@
 # AeroOS Windows Edition test plan
 
-## Static/source checks
-- Verify the WPF project and all XAML/code-behind files are included in the solution.
-- Verify the release packaging excludes installer/uninstaller scripts.
-- Verify there are no boot, shell, Defender, service, scheduled-task or global power-plan changes.
+## Automated/source checks
+- Verify WPF project/XAML/code-behind compile in Release mode.
+- Verify release packaging excludes installer/uninstaller scripts and contains only portable app/runtime files and notes.
+- Verify there are no boot, shell, Defender, service, scheduled-task, startup or global power-plan changes.
 - Verify preferences are written only to the AeroOS LocalAppData directory.
+- Verify Start Menu discovery is depth-limited and result-limited, handles inaccessible folders and skips reparse points.
 
-## Windows build checks
-- Build Release configuration using MSBuild on a Windows runner.
-- Confirm the executable exists and that the portable ZIP and SHA-256 file are generated.
-- Confirm the ZIP contains application files and plain-text notes only.
-
-## Runtime checks on a test Windows 10 device
-- Launch the app manually; confirm the full-screen window displays and Alt+F4/Exit closes it.
-- Confirm Windows Explorer and the native taskbar/desktop are unchanged after exit.
-- Test Start Menu discovery/search and each built-in app link.
-- Test all folder shortcuts and native Settings links.
-- Test theme, accent colour, wallpaper and Reduced Effects preferences persist correctly.
-- Confirm app discovery and WMI run once, and the clock timer refreshes once per minute.
-- Measure idle CPU/RAM and battery discharge with AeroOS closed and open, in both visual modes.
-- Inspect Windows Security scan results and application behaviour before daily use.
+## Windows runtime checks
+- Launch manually as a standard user; confirm no administrator prompt is required.
+- Confirm Exit/Alt+F4 reveals the normal Windows desktop and native taskbar.
+- Confirm Explorer and the Windows shell continue running normally.
+- Test Start, outside-click dismissal, Escape, Ctrl+Space, Ctrl+Comma and keyboard search/Enter.
+- Search Start Menu shortcuts using exact names, partial names and no-match terms.
+- Pin/unpin built-in and discovered apps; restart AeroOS and confirm pins persist.
+- Launch several apps and confirm Recent updates and persists.
+- Test built-in app launches, folder shortcuts and native Settings links.
+- Test theme, accents, wallpaper choose/remove and Reduced Effects persistence.
+- Test Start and Personalize at 800x600, 1024x768 and the laptop's native resolution/scaling.
+- Confirm dashboard/header clocks and dates remain synchronized.
+- Confirm hardware summary handles missing WMI fields.
+- Measure idle CPU/RAM and battery discharge with AeroOS closed/open in both appearance modes.
+- Scan the downloaded ZIP and executable with Windows Security before use.
 
 ## Status
-The above runtime and physical-device checks have not been completed in this environment.
+CI can verify compilation and static source rules only. Interactive Windows runtime, hardware, display-scaling, security scan and power-impact tests must be completed on a real Windows device. A successful build is not a malware certification or a guarantee of zero bugs or a particular battery-life result.
