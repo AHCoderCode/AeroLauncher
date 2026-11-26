@@ -912,10 +912,19 @@ namespace AeroOS.Windows
         private void StartSearch_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key != Key.Enter) return;
-            var app = GetMatchingApps(_startSearch == null ? string.Empty : _startSearch.Text).FirstOrDefault();
-            if (app == null) return;
-            _startOverlay.Visibility = Visibility.Collapsed;
-            LaunchEntry(app);
+            var query = _startSearch == null ? string.Empty : _startSearch.Text;
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                e.Handled = true;
+                return;
+            }
+
+            var app = GetMatchingApps(query).FirstOrDefault();
+            if (app != null)
+            {
+                _startOverlay.Visibility = Visibility.Collapsed;
+                LaunchEntry(app);
+            }
             e.Handled = true;
         }
 
