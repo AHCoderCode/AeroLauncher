@@ -1,4 +1,4 @@
-name: Build AeroOS Windows Edition
+name: Build AeroShell Desktop for Windows
 
 on:
   push:
@@ -17,6 +17,7 @@ on:
       - 'VERSION'
       - 'src/**'
       - 'scripts/**'
+      - '.github/workflows/build-windows.yml'
   workflow_dispatch:
 
 permissions:
@@ -36,16 +37,16 @@ jobs:
         shell: pwsh
         run: .\scripts\Verify-Source.ps1
 
-      - name: Build portable application bundle
+      - name: Build portable AeroShell application bundle
         shell: pwsh
         run: .\scripts\Build-Release.ps1
 
-      - name: Upload portable AeroOS app
+      - name: Upload portable AeroShell app
         uses: actions/upload-artifact@v4
         with:
-          name: AeroOS-Windows-v0.4.0
+          name: AeroShell-Windows-v0.5.0
           path: |
-            artifacts/AeroOS-Windows-v0.4.0.zip
-            artifacts/AeroOS-Windows-v0.4.0.zip.sha256
+            artifacts/AeroShell-Windows-v0.5.0.zip
+            artifacts/AeroShell-Windows-v0.5.0.zip.sha256
           if-no-files-found: error
           retention-days: 14
