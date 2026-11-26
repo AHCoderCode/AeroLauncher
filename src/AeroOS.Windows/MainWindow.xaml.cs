@@ -497,7 +497,7 @@ namespace AeroOS.Windows
                 Margin = new Thickness(10, 0, 0, 0),
                 ToolTip = "Type an app name, then press Enter"
             };
-            _desktopSearch.TextChanged += DesktopSearch_TextChanged;
+            // Search is submitted with Enter so the home page does not unexpectedly open Start while typing.
             _desktopSearch.PreviewKeyDown += delegate(object sender, KeyEventArgs e)
             {
                 if (e.Key == Key.Enter)
@@ -1240,6 +1240,8 @@ namespace AeroOS.Windows
             }
             SaveSettings();
             RenderStartResults(_startSearch == null ? string.Empty : _startSearch.Text);
+            if (string.Equals(_currentPage, "Apps", StringComparison.OrdinalIgnoreCase))
+                RenderAppsPage();
         }
 
         private void RememberRecent(AppEntry app)
@@ -1252,6 +1254,8 @@ namespace AeroOS.Windows
             SaveSettings();
             if (_startOverlay != null && _startOverlay.Visibility == Visibility.Visible)
                 RenderStartResults(_startSearch == null ? string.Empty : _startSearch.Text);
+            if (string.Equals(_currentPage, "Home", StringComparison.OrdinalIgnoreCase) && _pageHost != null)
+                NavigateTo("Home");
         }
 
         private void StartSearch_PreviewKeyDown(object sender, KeyEventArgs e)
