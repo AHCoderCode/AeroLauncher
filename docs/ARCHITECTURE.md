@@ -1,25 +1,25 @@
-# Architecture
+# AeroOS Windows Edition architecture
 
-## Execution model
+## Scope
 
-`AeroOS.Windows.exe` is a standard WPF desktop process targeting .NET Framework 4.8. It is launched by the user and runs in a normal Windows window. Closing it leaves the pre-existing Windows desktop and shell in place.
+AeroOS is a standalone custom desktop launcher window in the AeroLauncher repository. It is not AeroShell Desktop and is not the Linux Aero-Os distribution. The app is built to provide a visually distinct workspace while leaving the Windows installation and native shell intact.
 
-## Components
+## Layers
 
-- `ApplicationCatalog`: enumerates `.lnk` shortcuts under the current user's and all-users' Programs Start Menu folders; does not scan user documents or crawl the entire disk.
-- `SettingsLauncher`: opens native `ms-settings:` pages with Control Panel fallbacks where available.
-- `SystemInfoService`: reads basic CPU, GPU, memory and system-drive inventory through WMI and `DriveInfo`.
-- `PreferencesService`: stores theme, accent, app-only background path, pins and recent shortcuts in `%LOCALAPPDATA%\AeroOSWindows\settings.json`.
-- `MainWindow`: Overview, Applications, Personalization, Control Center and About views.
-- `Get-AeroOSHardwareReport.ps1`: separate read-only inventory for deeper Windows/hardware checks.
-- `Install-User.ps1` / `Uninstall-User.ps1`: user-profile-only program copy and shortcut management.
+- **Presentation:** WPF XAML window and a code-built composition of translucent cards, panels, tiles, in-app Start and in-app taskbar dock.
+- **Application discovery:** ApplicationCatalog enumerates Start Menu shortcut files from the current-user and common Programs folders.
+- **Launch integration:** selected shortcuts and built-in Windows tools start through ProcessStartInfo with shell execution. No process injection, shell hooking or process termination is used.
+- **Preferences:** PreferencesService reads/writes AeroOS-only JSON preferences in %LOCALAPPDATA%\AeroOSWindows.
+- **Hardware summary:** SystemInfoService reads a one-time basic WMI snapshot; it is not a monitoring loop or telemetry service.
 
-## Trust boundaries
+## Lifecycle
 
-The app does not run as a service, request administrator privileges, edit global registry settings, replace the shell, or alter boot configuration. Launching a shortcut delegates execution to the Windows shell with `UseShellExecute=true`. Settings navigation delegates to Windows Settings or Control Panel.
-
-The installer creates a folder under the current user's LocalAppData Programs directory and AeroOS-named shortcuts. It does not register a run-at-logon entry. The uninstaller checks an exact path and marker before removing only the AeroOS program directory; it deletes a shortcut only when its target still points to the AeroOS executable. Preferences are separate and retained.
+The user manually launches the executable. The single maximized window is displayed. A one-minute UI timer refreshes the clock. Start Menu discovery and hardware inventory are performed once after the window loads. Exit closes the process; it does not change the Windows shell or session.
 
 ## Resource strategy
 
-No embedded browser, daemon, tray poller or continuous hardware polling is used. App discovery and WMI reads occur on background tasks. The only periodic UI timer updates the in-window clock once per minute. Performance mode skips the decorative app-only background image; it does not change global Windows behavior.
+No Electron runtime, remote web content, always-on background service, continuous animation loop, or recurring hardware polling is included. The optional wallpaper is decoded at a bounded width and is skipped in Reduced Effects mode.
+
+## Limitations
+
+The interface is a launcher shell inside an application window. It does not own Windows logon, the native desktop, the native taskbar or operating-system services. Windows Explorer and the actual Windows tools handle file browsing and system settings.
