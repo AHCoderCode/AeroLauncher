@@ -1,6 +1,6 @@
 # AeroOS Windows Edition
 
-**AeroOS Windows Edition 0.2.0** is a custom, full-screen desktop launcher for Windows 10. It is a standalone Windows application project in the **AeroLauncher** repository; it is separate from the Linux Aero-Os repository and separate from any AeroShell Desktop project.
+**AeroOS Windows Edition 0.3.0** is a custom, full-screen desktop launcher for Windows 10. It is a standalone Windows application project in the **AeroLauncher** repository; it is separate from the Linux Aero-Os repository and separate from any AeroShell Desktop project.
 
 AeroOS gives the user a custom glass-style workspace with its own visual taskbar, Start panel, app search, quick-launch tiles, folder shortcuts, clock, quick settings links and personalization. It launches the existing Windows applications rather than replacing them.
 
@@ -10,9 +10,10 @@ AeroOS runs as one ordinary, borderless, maximized WPF window. It does **not** r
 
 The project must never erase, format, repartition, reset, reinstall or replace Windows. It is not an operating-system installer or Windows debloater.
 
-## 0.2.0 launcher features
+## 0.3.0 launcher features
 
-- Full-screen, custom AeroOS workspace with a dark, translucent glass-style visual system.
+- Full-screen, custom AeroOS workspace with layered glass gradients, luminous edge highlights and static ambient colour glows.
+- Rounded glass control templates with consistent hover, press and focus states.
 - In-app Start panel with search for discovered Start Menu shortcuts and built-in Windows tools.
 - Quick-launch tiles for File Explorer, the default web browser, Windows Settings, Calculator, Paint and Notepad.
 - Shortcuts to the user's Home, Documents, Downloads, Pictures, Music, This PC and Recycle Bin locations.
@@ -51,4 +52,4 @@ The optional wallpaper path is used only by the AeroOS window. It does not chang
 
 ## Build status
 
-Source implementation for 0.2.0 has been committed. The project still needs a successful Windows CI build, review of the generated bundle, and runtime testing on the HP ProBook. No malware-free certification or measured performance result is claimed.
+Source implementation for 0.3.0 has been committed. The glass visual refresh must pass the Windows CI build and then be checked interactively on the HP ProBook for layout, controls, responsiveness and performance. No malware-free certification or measured performance result is claimed.
