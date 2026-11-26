@@ -9,7 +9,6 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 using System.Windows.Threading;
 using AeroOS.Windows.Models;
 using AeroOS.Windows.Services;
@@ -1049,7 +1048,7 @@ namespace AeroOS.Windows
             };
             radial.Freeze();
 
-            ShellRoot.Children.Add(new Ellipse
+            ShellRoot.Children.Add(new System.Windows.Shapes.Ellipse
             {
                 Width = width,
                 Height = height,
