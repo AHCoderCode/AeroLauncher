@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -20,523 +21,954 @@ namespace AeroOS.Windows
         private readonly PreferencesService _preferences = new PreferencesService();
         private readonly ApplicationCatalog _catalog = new ApplicationCatalog();
         private readonly SystemInfoService _systemInfo = new SystemInfoService();
+        private readonly DispatcherTimer _clockTimer = new DispatcherTimer();
         private AeroSettings _settings;
         private List<AppEntry> _applications = new List<AppEntry>();
-        private SystemSnapshot _snapshot;
-        private string _currentPage = "Home";
-        private string _searchTerm = string.Empty;
-        private readonly DispatcherTimer _clockTimer = new DispatcherTimer();
+        private List<AppEntry> _builtInApps = new List<AppEntry>();
+        private TextBlock _clockLabel;
+        private TextBlock _dateLabel;
+        private TextBlock _deviceSummary;
+        private TextBox _startSearch;
+        private StackPanel _startResults;
+        private Grid _startOverlay;
+        private Grid _settingsOverlay;
+        private TextBox _desktopSearch;
+        private bool _isLoadingApps;
 
         public MainWindow()
         {
             InitializeComponent();
             _settings = _preferences.Load();
-            ApplyTheme();
-            ApplyWallpaper();
-            UpdateClock();
+            _settings.Normalize();
+            _builtInApps = CreateBuiltInApps();
+            BuildShell();
+
             _clockTimer.Interval = TimeSpan.FromMinutes(1);
             _clockTimer.Tick += delegate { UpdateClock(); };
             _clockTimer.Start();
-            Closed += delegate { _clockTimer.Stop(); };
-            Loaded += MainWindow_Loaded;
         }
 
-        private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            RenderHome();
+            _isLoadingApps = true;
+            RenderStartResults(string.Empty);
             try
             {
                 _applications = await Task.Run(() => _catalog.Discover());
-                if (_currentPage == "Home") RenderHome();
-                else if (_currentPage == "Apps") RenderApplications();
+                RenderStartResults(_startSearch == null ? string.Empty : _startSearch.Text);
             }
-            catch (Exception ex)
+            catch
             {
-                ShowMessage("Application discovery", "AeroOS could not read one or more Start Menu folders. Windows itself is unaffected. " + ex.Message);
-            }
-
-            try { _snapshot = await Task.Run(() => _systemInfo.ReadSnapshot()); }
-            catch { _snapshot = null; }
-            if (_currentPage == "Home") RenderHome();
-        }
-
-        private void Navigation_Click(object sender, RoutedEventArgs e)
-        {
-            var button = sender as Button;
-            if (button == null) return;
-            Navigate(Convert.ToString(button.Tag));
-        }
-
-        private void Navigate(string page)
-        {
-            _currentPage = page;
-            switch (page)
-            {
-                case "Home": RenderHome(); break;
-                case "Apps": RenderApplications(); break;
-                case "Personalization": RenderPersonalization(); break;
-                case "ControlCenter": RenderControlCenter(); break;
-                case "About": RenderAbout(); break;
-                default: RenderHome(); break;
-            }
-        }
-
-        private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            if (SearchBox == null) return;
-            _searchTerm = SearchBox.Text ?? string.Empty;
-            if (_currentPage != "Apps") _currentPage = "Apps";
-            RenderApplications();
-        }
-
-        private void WindowsSettings_Click(object sender, RoutedEventArgs e)
-        {
-            OpenSetting("ms-settings:", null);
-        }
-
-        private void About_Click(object sender, RoutedEventArgs e)
-        {
-            Navigate("About");
-        }
-
-        private void OpenExplorer_Click(object sender, RoutedEventArgs e)
-        {
-            SafeStart("explorer.exe", null);
-        }
-
-        private void OpenTaskManager_Click(object sender, RoutedEventArgs e)
-        {
-            SafeStart("taskmgr.exe", null);
-        }
-
-        private void RefreshSystem_Click(object sender, RoutedEventArgs e)
-        {
-            var button = sender as Button;
-            if (button != null) button.IsEnabled = false;
-            Task.Run(() => _systemInfo.ReadSnapshot()).ContinueWith(task =>
-            {
-                Dispatcher.Invoke(() =>
+                if (_startResults != null)
                 {
-                    _snapshot = task.Status == TaskStatus.RanToCompletion ? task.Result : null;
-                    if (button != null) button.IsEnabled = true;
-                    RenderHome();
-                });
-            });
-        }
-
-        private void RenderHome()
-        {
-            ContentPanel.Children.Clear();
-            AddHeading("Welcome to AeroOS", "A lightweight Windows desktop companion. Your normal Windows desktop, applications, drivers and security remain underneath.");
-
-            var hero = new Border
-            {
-                Background = GetBrush("CardBrush"),
-                BorderBrush = GetBrush("LineBrush"),
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(18),
-                Padding = new Thickness(24),
-                Margin = new Thickness(0, 0, 0, 22)
-            };
-            var heroStack = new StackPanel();
-            heroStack.Children.Add(Text("A calmer workspace for your Windows PC", 22, true, "TextBrush"));
-            heroStack.Children.Add(Text("Open your real Windows apps, reach native settings and check basic hardware information — without replacing the Windows shell.", 13, false, "MutedBrush", 0, 7));
-            var heroButtons = new WrapPanel { Margin = new Thickness(0, 17, 0, 0) };
-            heroButtons.Children.Add(ActionButton("Open File Explorer", OpenExplorer_Click, true));
-            heroButtons.Children.Add(ActionButton("Browse applications", delegate { SearchBox.Text = string.Empty; Navigate("Apps"); }, false));
-            heroButtons.Children.Add(ActionButton("Windows Settings", delegate { OpenSetting("ms-settings:", null); }, false));
-            heroStack.Children.Add(heroButtons);
-            hero.Child = heroStack;
-            ContentPanel.Children.Add(hero);
-
-            AddSectionTitle("System overview", "Read-only information reported by Windows");
-            var metrics = new WrapPanel { Margin = new Thickness(0, 0, 0, 20) };
-            metrics.Children.Add(MetricCard("Installed apps", _applications.Count.ToString(), "Start Menu shortcuts discovered"));
-            metrics.Children.Add(MetricCard("Memory", _snapshot == null || _snapshot.TotalMemoryGb <= 0 ? "Checking…" : _snapshot.TotalMemoryGb.ToString("0.0") + " GB", _snapshot == null || _snapshot.AvailableMemoryGb <= 0 ? "Available memory not read" : _snapshot.AvailableMemoryGb.ToString("0.0") + " GB currently available"));
-            metrics.Children.Add(MetricCard("System drive", _snapshot == null || _snapshot.TotalSystemDriveGb <= 0 ? "Checking…" : _snapshot.FreeSystemDriveGb.ToString("0.0") + " GB free", _snapshot == null || _snapshot.TotalSystemDriveGb <= 0 ? "Drive information not read" : "of " + _snapshot.TotalSystemDriveGb.ToString("0.0") + " GB"));
-            ContentPanel.Children.Add(metrics);
-
-            var detail = new Border { Background = GetBrush("PanelBrush"), BorderBrush = GetBrush("LineBrush"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(14), Padding = new Thickness(18), Margin = new Thickness(0, 0, 0, 22) };
-            var detailStack = new StackPanel();
-            detailStack.Children.Add(Text("Hardware snapshot", 15, true, "TextBrush"));
-            detailStack.Children.Add(Text(_snapshot == null ? "System information is still loading or could not be queried." :
-                "CPU: " + _snapshot.CpuName + "\nGPU: " + _snapshot.GpuName + "\nWindows: " + _snapshot.OperatingSystem + "\nArchitecture: " + _snapshot.Architecture + "\nLogical processors: " + _snapshot.LogicalProcessors,
-                12, false, "MutedBrush", 0, 9));
-            var detailButtons = new WrapPanel();
-            detailButtons.Children.Add(ActionButton("Refresh information", RefreshSystem_Click, false));
-            detailButtons.Children.Add(ActionButton("Open Task Manager", OpenTaskManager_Click, false));
-            detailButtons.Children.Add(ActionButton("Control Center", delegate { Navigate("ControlCenter"); }, false));
-            detailStack.Children.Add(detailButtons);
-            detail.Child = detailStack;
-            ContentPanel.Children.Add(detail);
-
-            AddSectionTitle("Pinned applications", "Your shortcuts are discovered from the Windows Start Menu");
-            var pinned = _applications.Where(x => _settings.PinnedPaths.Contains(x.Path, StringComparer.OrdinalIgnoreCase)).ToList();
-            if (pinned.Count == 0)
-                ContentPanel.Children.Add(Text("No pinned apps yet. Open Applications and select Pin on a shortcut.", 12, false, "MutedBrush", 0, 8));
-            else
-            {
-                var row = new WrapPanel();
-                foreach (var app in pinned.Take(8)) row.Children.Add(AppTile(app, true));
-                ContentPanel.Children.Add(row);
-            }
-
-            AddSectionTitle("Recently opened", "Shortcuts you launched from AeroOS");
-            var recent = _settings.RecentPaths.Select(path => _applications.FirstOrDefault(app => string.Equals(app.Path, path, StringComparison.OrdinalIgnoreCase)))
-                .Where(app => app != null).Take(6).ToList();
-            if (recent.Count == 0)
-                ContentPanel.Children.Add(Text("Your recently launched shortcuts will appear here.", 11, false, "MutedBrush", 0, 12));
-            else
-            {
-                var recentRow = new WrapPanel();
-                foreach (var app in recent) recentRow.Children.Add(AppTile(app, true));
-                ContentPanel.Children.Add(recentRow);
-            }
-
-            AddSectionTitle("Quick access", "These open real Windows tools");
-            var quick = new WrapPanel();
-            quick.Children.Add(QuickCard("File Explorer", "Browse your actual drives and files", delegate { SafeStart("explorer.exe", null); }));
-            quick.Children.Add(QuickCard("Task Manager", "Inspect processes and performance", delegate { SafeStart("taskmgr.exe", null); }));
-            quick.Children.Add(QuickCard("Windows Update", "Open native update settings", delegate { OpenSetting("ms-settings:windowsupdate", "" ); }));
-            ContentPanel.Children.Add(quick);
-        }
-
-        private void RenderApplications()
-        {
-            ContentPanel.Children.Clear();
-            AddHeading("Applications", "Applications are read from your user and all-users Windows Start Menu shortcut folders. AeroOS does not install or remove programs.");
-            if (!string.IsNullOrWhiteSpace(_searchTerm))
-                ContentPanel.Children.Add(Text("Search results for: " + _searchTerm, 12, true, "MutedBrush", 0, 12));
-
-            var visible = _applications.Where(x => string.IsNullOrWhiteSpace(_searchTerm) ||
-                x.Name.IndexOf(_searchTerm, StringComparison.CurrentCultureIgnoreCase) >= 0 ||
-                x.Category.IndexOf(_searchTerm, StringComparison.CurrentCultureIgnoreCase) >= 0).ToList();
-
-            if (visible.Count == 0)
-            {
-                ContentPanel.Children.Add(InfoCard("No matching Start Menu shortcuts", _applications.Count == 0 ? "No .lnk shortcuts were discovered. Store apps that do not expose Start Menu shortcuts may not appear here." : "Try a different search term or clear the search field."));
-                return;
-            }
-
-            ContentPanel.Children.Add(Text(visible.Count + " shortcut(s)", 11, false, "MutedBrush", 0, 9));
-            foreach (var group in visible.GroupBy(x => x.Category).OrderBy(x => x.Key, StringComparer.CurrentCultureIgnoreCase))
-            {
-                AddSectionTitle(group.Key, group.Count() + " app shortcut(s)");
-                var grid = new WrapPanel();
-                foreach (var app in group) grid.Children.Add(AppTile(app, false));
-                ContentPanel.Children.Add(grid);
-            }
-        }
-
-        private void RenderPersonalization()
-        {
-            ContentPanel.Children.Clear();
-            AddHeading("Personalization", "Changes on this page affect only the AeroOS application window. They do not change the Windows system theme or wallpaper.");
-
-            var themeCard = CreateSectionCard("Appearance", "Choose how the AeroOS window is displayed.");
-            var themeRow = new WrapPanel { Margin = new Thickness(0, 12, 0, 0) };
-            themeRow.Children.Add(ChoiceButton("Dark theme", delegate { _settings.Theme = "Dark"; SaveSettings(); ApplyTheme(); RenderPersonalization(); }));
-            themeRow.Children.Add(ChoiceButton("Light theme", delegate { _settings.Theme = "Light"; SaveSettings(); ApplyTheme(); RenderPersonalization(); }));
-            ((StackPanel)themeCard.Child).Children.Add(themeRow);
-            ((StackPanel)themeCard.Child).Children.Add(Text("Accent color", 12, true, "TextBrush", 0, 15));
-            var accent = new ComboBox { Width = 190, Height = 34, Margin = new Thickness(0, 7, 0, 5), Background = GetBrush("CardBrush"), Foreground = GetBrush("TextBrush"), BorderBrush = GetBrush("LineBrush"), Padding = new Thickness(7) };
-            accent.Items.Add(new ComboBoxItem { Content = "Violet", Tag = "#8B7CF6" });
-            accent.Items.Add(new ComboBoxItem { Content = "Blue", Tag = "#3984E8" });
-            accent.Items.Add(new ComboBoxItem { Content = "Teal", Tag = "#20A99A" });
-            accent.Items.Add(new ComboBoxItem { Content = "Rose", Tag = "#D76C9A" });
-            foreach (ComboBoxItem item in accent.Items) if (Convert.ToString(item.Tag) == _settings.AccentColor) accent.SelectedItem = item;
-            accent.SelectionChanged += delegate
-            {
-                var item = accent.SelectedItem as ComboBoxItem;
-                if (item != null) { _settings.AccentColor = Convert.ToString(item.Tag); SaveSettings(); ApplyTheme(); }
-            };
-            ((StackPanel)themeCard.Child).Children.Add(accent);
-            ContentPanel.Children.Add(themeCard);
-
-            var performanceCard = CreateSectionCard("Performance mode", "Reduces decorative UI work inside AeroOS only. It does not disable Windows services or change system-wide performance settings.");
-            var performance = new CheckBox { Content = "Use minimal visual effects", IsChecked = _settings.PerformanceMode, Foreground = GetBrush("TextBrush"), Margin = new Thickness(0, 13, 0, 0), FontSize = 13 };
-            performance.Checked += delegate { _settings.PerformanceMode = true; SaveSettings(); ApplyWallpaper(); };
-            performance.Unchecked += delegate { _settings.PerformanceMode = false; SaveSettings(); ApplyWallpaper(); };
-            ((StackPanel)performanceCard.Child).Children.Add(performance);
-            ContentPanel.Children.Add(performanceCard);
-
-            var wallpaperCard = CreateSectionCard("AeroOS workspace background", "Select an image used behind this app's content area. Your Windows desktop wallpaper is not touched.");
-            var wallpaperRow = new WrapPanel { Margin = new Thickness(0, 12, 0, 0) };
-            wallpaperRow.Children.Add(ActionButton("Choose image…", ChooseWallpaper_Click, true));
-            wallpaperRow.Children.Add(ActionButton("Clear image", delegate { _settings.WallpaperPath = string.Empty; SaveSettings(); ApplyWallpaper(); RenderPersonalization(); }, false));
-            ((StackPanel)wallpaperCard.Child).Children.Add(wallpaperRow);
-            ((StackPanel)wallpaperCard.Child).Children.Add(Text(string.IsNullOrWhiteSpace(_settings.WallpaperPath) ? "No workspace image selected." : Path.GetFileName(_settings.WallpaperPath), 11, false, "MutedBrush", 0, 10));
-            ContentPanel.Children.Add(wallpaperCard);
-
-            var resetCard = CreateSectionCard("Reset AeroOS preferences", "Restores AeroOS's own theme, accent, pins and recent-app list. It does not reset Windows.");
-            ((StackPanel)resetCard.Child).Children.Add(ActionButton("Reset AeroOS preferences", delegate
-            {
-                var answer = MessageBox.Show("Reset only AeroOS preferences? Windows settings, apps and files will not be changed.", "Reset AeroOS preferences", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                if (answer == MessageBoxResult.Yes)
-                {
-                    _settings = AeroSettings.CreateDefault();
-                    SaveSettings(); ApplyTheme(); ApplyWallpaper(); RenderPersonalization();
+                    _startResults.Children.Clear();
+                    _startResults.Children.Add(MakeText("Installed app discovery is unavailable. Windows apps are unaffected.", 12, "Muted"));
                 }
-            }, false));
-            ContentPanel.Children.Add(resetCard);
-        }
-
-        private void RenderControlCenter()
-        {
-            ContentPanel.Children.Clear();
-            AddHeading("Control Center", "Shortcuts open native Windows settings pages or built-in Windows tools. AeroOS does not imitate system controls it cannot manage.");
-            var grid = new WrapPanel();
-            grid.Children.Add(QuickCard("Display", "Resolution, scaling and multiple displays", delegate { OpenSetting("ms-settings:display", "desk.cpl"); }));
-            grid.Children.Add(QuickCard("Sound", "Output and input devices", delegate { OpenSetting("ms-settings:sound", "mmsys.cpl"); }));
-            grid.Children.Add(QuickCard("Wi-Fi & network", "Network and internet settings", delegate { OpenSetting("ms-settings:network-status", "ncpa.cpl"); }));
-            grid.Children.Add(QuickCard("Bluetooth", "Bluetooth device settings", delegate { OpenSetting("ms-settings:bluetooth", "bthprops.cpl"); }));
-            grid.Children.Add(QuickCard("Power & battery", "Power mode and battery settings", delegate { OpenSetting("ms-settings:powersleep", "powercfg.cpl"); }));
-            grid.Children.Add(QuickCard("Storage", "Storage and free-space settings", delegate { OpenSetting("ms-settings:storagesense", "" ); }));
-            grid.Children.Add(QuickCard("Personalization", "Windows themes and background settings", delegate { OpenSetting("ms-settings:personalization", "" ); }));
-            grid.Children.Add(QuickCard("Windows Update", "Update status and update options", delegate { OpenSetting("ms-settings:windowsupdate", "" ); }));
-            grid.Children.Add(QuickCard("Windows Security", "Security and protection dashboard", delegate { OpenSetting("ms-settings:windowsdefender", "" ); }));
-            grid.Children.Add(QuickCard("Installed apps", "Apps and optional features", delegate { OpenSetting("ms-settings:appsfeatures", "appwiz.cpl"); }));
-            grid.Children.Add(QuickCard("Accessibility", "Ease of Access settings", delegate { OpenSetting("ms-settings:easeofaccess", "" ); }));
-            grid.Children.Add(QuickCard("About this PC", "Device and Windows information", delegate { OpenSetting("ms-settings:about", "sysdm.cpl"); }));
-            ContentPanel.Children.Add(grid);
-            ContentPanel.Children.Add(InfoCard("Compatibility note", "Some Windows 10 builds may not expose every ms-settings page URI. Where a known Control Panel fallback exists, AeroOS opens it. A failed shortcut does not change system configuration."));
-        }
-
-        private void RenderAbout()
-        {
-            ContentPanel.Children.Clear();
-            AddHeading("About AeroOS Windows Edition", "A desktop companion for Windows — not a replacement operating system.");
-            ContentPanel.Children.Add(InfoCard("Windows stays in charge", "AeroOS runs as a normal, resizable Windows application. It does not replace Explorer.exe, Winlogon, the Windows shell, boot files or the bootloader."));
-            ContentPanel.Children.Add(InfoCard("Your files and applications", "Application discovery reads Start Menu shortcuts. Launching an item asks the normal Windows shell to open it. File Explorer remains the real Windows File Explorer."));
-            ContentPanel.Children.Add(InfoCard("Performance transparency", "AeroOS does not claim to make Windows faster by changing its appearance. The optional Performance mode only reduces decorative work inside this app. Use Windows Task Manager and the included read-only diagnostic report to measure the PC."));
-            ContentPanel.Children.Add(InfoCard("Privacy", "The app stores its preferences in your Local AppData folder. It does not upload hardware information, collect credentials or send telemetry."));
-            ContentPanel.Children.Add(InfoCard("Recovery", "Close AeroOS like any other app. Windows Explorer and the native taskbar remain available. Uninstalling AeroOS removes only the AeroOS program folder and shortcuts created by its installer; preferences are retained unless you remove them yourself."));
-        }
-
-        private Border AppTile(AppEntry app, bool compact)
-        {
-            var card = new Border
+            }
+            finally
             {
-                Width = compact ? 190 : 218,
-                MinHeight = compact ? 98 : 132,
-                Margin = new Thickness(0, 0, 12, 12),
-                Padding = new Thickness(14),
-                Background = GetBrush("CardBrush"),
-                BorderBrush = GetBrush("LineBrush"),
+                _isLoadingApps = false;
+            }
+
+            try
+            {
+                var snapshot = await Task.Run(() => _systemInfo.ReadSnapshot());
+                if (_deviceSummary != null)
+                {
+                    _deviceSummary.Text = snapshot.CpuName + Environment.NewLine
+                        + snapshot.Architecture + "  •  " + snapshot.LogicalProcessors + " logical processors"
+                        + (snapshot.TotalMemoryGb > 0 ? Environment.NewLine + snapshot.TotalMemoryGb.ToString("0.0") + " GB memory" : string.Empty);
+                }
+            }
+            catch
+            {
+                if (_deviceSummary != null) _deviceSummary.Text = "Windows device information is unavailable.";
+            }
+        }
+
+        private void Window_Closed(object sender, EventArgs e)
+        {
+            _clockTimer.Stop();
+        }
+
+        private void Window_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Escape)
+            {
+                if (_startOverlay != null && _startOverlay.Visibility == Visibility.Visible)
+                {
+                    _startOverlay.Visibility = Visibility.Collapsed;
+                    e.Handled = true;
+                }
+                else if (_settingsOverlay != null && _settingsOverlay.Visibility == Visibility.Visible)
+                {
+                    _settingsOverlay.Visibility = Visibility.Collapsed;
+                    e.Handled = true;
+                }
+            }
+        }
+
+        private void BuildShell()
+        {
+            ShellRoot.Children.Clear();
+            ShellRoot.Background = new LinearGradientBrush(
+                ColorFrom("#10172C"), ColorFrom("#211B3D"), 35);
+
+            if (!_settings.PerformanceMode && !string.IsNullOrWhiteSpace(_settings.WallpaperPath) && File.Exists(_settings.WallpaperPath))
+            {
+                try
+                {
+                    var bitmap = new BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.DecodePixelWidth = 1600;
+                    bitmap.UriSource = new Uri(_settings.WallpaperPath, UriKind.Absolute);
+                    bitmap.EndInit();
+                    bitmap.Freeze();
+                    ShellRoot.Children.Add(new Image
+                    {
+                        Source = bitmap,
+                        Stretch = Stretch.UniformToFill,
+                        Opacity = 0.28,
+                        IsHitTestVisible = false
+                    });
+                }
+                catch { }
+            }
+
+            var layout = new Grid { Margin = new Thickness(26, 18, 26, 18) };
+            layout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(66) });
+            layout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            layout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(76) });
+            BuildHeader(layout);
+            BuildDesktop(layout);
+            BuildTaskbar(layout);
+            ShellRoot.Children.Add(layout);
+
+            _startOverlay = BuildStartOverlay();
+            _settingsOverlay = BuildSettingsOverlay();
+            ShellRoot.Children.Add(_startOverlay);
+            ShellRoot.Children.Add(_settingsOverlay);
+            Panel.SetZIndex(_startOverlay, 50);
+            Panel.SetZIndex(_settingsOverlay, 60);
+            UpdateClock();
+        }
+
+        private void BuildHeader(Grid layout)
+        {
+            var header = GlassCard(new Thickness(18, 10, 18, 10), 18);
+            Grid.SetRow(header, 0);
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var brand = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            var mark = new Border
+            {
+                Width = 40,
+                Height = 40,
+                CornerRadius = new CornerRadius(13),
+                Background = AccentBrush(),
+                Child = new TextBlock
+                {
+                    Text = "A",
+                    Foreground = Brushes.White,
+                    FontSize = 25,
+                    FontWeight = FontWeights.Bold,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+            };
+            brand.Children.Add(mark);
+            var brandText = new StackPanel { Margin = new Thickness(11, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            brandText.Children.Add(MakeText("AEROOS", 15, "Text", FontWeights.Bold));
+            brandText.Children.Add(MakeText("WINDOWS EDITION", 8, "Muted", FontWeights.SemiBold));
+            brand.Children.Add(brandText);
+            grid.Children.Add(brand);
+
+            var center = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            center.Children.Add(MakeText("PERSONAL DESKTOP", 10, "Muted", FontWeights.SemiBold));
+            Grid.SetColumn(center, 1);
+            grid.Children.Add(center);
+
+            var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
+            var clockBlock = new StackPanel { VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 18, 0) };
+            _clockLabel = MakeText("", 15, "Text", FontWeights.SemiBold);
+            _clockLabel.HorizontalAlignment = HorizontalAlignment.Right;
+            _dateLabel = MakeText("", 9, "Muted");
+            _dateLabel.HorizontalAlignment = HorizontalAlignment.Right;
+            clockBlock.Children.Add(_clockLabel);
+            clockBlock.Children.Add(_dateLabel);
+            actions.Children.Add(clockBlock);
+            actions.Children.Add(MakeButton("⚙  Settings", delegate { ShowSettings(); }, false, 12, 34));
+            actions.Children.Add(MakeButton("✕", delegate { Close(); }, false, 12, 34, 42));
+            Grid.SetColumn(actions, 2);
+            grid.Children.Add(actions);
+
+            header.Child = grid;
+            layout.Children.Add(header);
+        }
+
+        private void BuildDesktop(Grid layout)
+        {
+            var body = new Grid { Margin = new Thickness(0, 17, 0, 17) };
+            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(205) });
+            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(248) });
+            Grid.SetRow(body, 1);
+            layout.Children.Add(body);
+
+            var sidebar = GlassCard(new Thickness(15, 18, 15, 16), 20);
+            var sideStack = new StackPanel();
+            sideStack.Children.Add(MakeText("YOUR PLACES", 9, "Muted", FontWeights.Bold, new Thickness(9, 2, 0, 11)));
+            sideStack.Children.Add(PlaceButton("⌂", "Home", Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)));
+            sideStack.Children.Add(PlaceButton("▤", "Documents", Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)));
+            sideStack.Children.Add(PlaceButton("↓", "Downloads", Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads")));
+            sideStack.Children.Add(PlaceButton("▧", "Pictures", Environment.GetFolderPath(Environment.SpecialFolder.MyPictures)));
+            sideStack.Children.Add(PlaceButton("♫", "Music", Environment.GetFolderPath(Environment.SpecialFolder.MyMusic)));
+            sideStack.Children.Add(PlaceButton("▣", "This PC", "shell:MyComputerFolder"));
+            sideStack.Children.Add(PlaceButton("♲", "Recycle Bin", "shell:RecycleBinFolder"));
+            var sideDivider = new Border { Height = 1, Background = LineBrush(), Margin = new Thickness(6, 15, 6, 13) };
+            sideStack.Children.Add(sideDivider);
+            sideStack.Children.Add(MakeText("WINDOWS TOOLS", 9, "Muted", FontWeights.Bold, new Thickness(9, 0, 0, 9)));
+            sideStack.Children.Add(PlaceActionButton("▦", "All applications", ShowStart));
+            sideStack.Children.Add(PlaceActionButton("⚙", "Windows Settings", OpenWindowsSettings));
+            sideStack.Children.Add(PlaceActionButton("▥", "Task Manager", delegate { LaunchBuiltin("@taskmanager"); }));
+            sidebar.Child = sideStack;
+            body.Children.Add(sidebar);
+
+            var center = new StackPanel { Margin = new Thickness(20, 4, 20, 4) };
+            Grid.SetColumn(center, 1);
+            body.Children.Add(center);
+
+            var greeting = GetGreeting();
+            center.Children.Add(MakeText(greeting + ", welcome back.", 29, "Text", FontWeights.SemiBold, new Thickness(2, 4, 0, 1)));
+            center.Children.Add(MakeText("A beautiful, focused space for the things you do on Windows.", 12, "Muted", FontWeights.Normal, new Thickness(3, 0, 0, 19)));
+
+            var searchRow = new Grid { Margin = new Thickness(0, 0, 0, 18) };
+            searchRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            searchRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var searchBorder = GlassCard(new Thickness(15, 0, 12, 0), 14);
+            searchBorder.Height = 48;
+            var searchGrid = new Grid();
+            searchGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            searchGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            searchGrid.Children.Add(MakeText("⌕", 25, "Muted", FontWeights.Normal));
+            _desktopSearch = new TextBox
+            {
+                Background = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                Foreground = TextBrush(),
+                CaretBrush = AccentBrush(),
+                FontSize = 13,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Margin = new Thickness(10, 0, 0, 0),
+                ToolTip = "Search installed Start Menu applications and Windows tools"
+            };
+            _desktopSearch.TextChanged += DesktopSearch_TextChanged;
+            Grid.SetColumn(_desktopSearch, 1);
+            searchGrid.Children.Add(_desktopSearch);
+            searchBorder.Child = searchGrid;
+            searchRow.Children.Add(searchBorder);
+            var searchButton = MakeButton("Search apps", delegate
+            {
+                ShowStart();
+                if (_startSearch != null) _startSearch.Text = _desktopSearch == null ? string.Empty : _desktopSearch.Text;
+            }, true, 12, 48);
+            searchButton.Margin = new Thickness(10, 0, 0, 0);
+            Grid.SetColumn(searchButton, 1);
+            searchRow.Children.Add(searchButton);
+            center.Children.Add(searchRow);
+
+            var quickHeader = new Grid { Margin = new Thickness(2, 0, 0, 9) };
+            quickHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            quickHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            quickHeader.Children.Add(MakeText("QUICK LAUNCH", 10, "Muted", FontWeights.Bold));
+            var allApps = MakeText("VIEW ALL  →", 9, "Accent", FontWeights.Bold);
+            allApps.Cursor = Cursors.Hand;
+            allApps.MouseLeftButtonUp += delegate { ShowStart(); };
+            Grid.SetColumn(allApps, 1);
+            quickHeader.Children.Add(allApps);
+            center.Children.Add(quickHeader);
+
+            var tiles = new WrapPanel { Margin = new Thickness(-5, 0, -5, 8) };
+            tiles.Children.Add(CreateTile("▤", "File Explorer", "Your files and folders", delegate { LaunchBuiltin("@explorer"); }));
+            tiles.Children.Add(CreateTile("◎", "Web browser", "Open your default browser", delegate { LaunchBuiltin("@browser"); }));
+            tiles.Children.Add(CreateTile("⚙", "Settings", "Windows and AeroOS settings", OpenWindowsSettings));
+            tiles.Children.Add(CreateTile("▦", "Calculator", "Quick calculations", delegate { LaunchBuiltin("@calculator"); }));
+            tiles.Children.Add(CreateTile("▧", "Paint", "Create and edit images", delegate { LaunchBuiltin("@paint"); }));
+            tiles.Children.Add(CreateTile("▤", "Notepad", "Write a quick note", delegate { LaunchBuiltin("@notepad"); }));
+            center.Children.Add(tiles);
+
+            var lower = GlassCard(new Thickness(17, 13, 17, 13), 16);
+            lower.Margin = new Thickness(0, 9, 0, 0);
+            var lowerGrid = new Grid();
+            lowerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            lowerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var lowerText = new StackPanel();
+            lowerText.Children.Add(MakeText("AeroOS stays in its own window", 13, "Text", FontWeights.SemiBold));
+            lowerText.Children.Add(MakeText("Windows remains underneath. Close AeroOS at any time to return to the normal desktop.", 10, "Muted"));
+            lowerGrid.Children.Add(lowerText);
+            var safeBadge = MakeText("SAFE SESSION", 9, "Accent", FontWeights.Bold);
+            safeBadge.VerticalAlignment = VerticalAlignment.Center;
+            Grid.SetColumn(safeBadge, 1);
+            lowerGrid.Children.Add(safeBadge);
+            lower.Child = lowerGrid;
+            center.Children.Add(lower);
+
+            var right = new StackPanel();
+            Grid.SetColumn(right, 2);
+            body.Children.Add(right);
+
+            var timeCard = GlassCard(new Thickness(18, 18, 18, 18), 20);
+            timeCard.Margin = new Thickness(0, 0, 0, 13);
+            var timeStack = new StackPanel();
+            timeStack.Children.Add(MakeText("YOUR MOMENT", 9, "Muted", FontWeights.Bold, new Thickness(0, 0, 0, 13)));
+            var largeTime = MakeText(DateTime.Now.ToString("h:mm"), 34, "Text", FontWeights.Light);
+            timeStack.Children.Add(largeTime);
+            timeStack.Children.Add(MakeText(DateTime.Now.ToString("dddd, dd MMMM yyyy"), 10, "Muted", FontWeights.Normal, new Thickness(0, 0, 0, 12)));
+            var timeDivider = new Border { Height = 1, Background = LineBrush(), Margin = new Thickness(0, 1, 0, 11) };
+            timeStack.Children.Add(timeDivider);
+            timeStack.Children.Add(MakeText("A little more focus. A little less clutter.", 11, "Muted"));
+            timeCard.Child = timeStack;
+            right.Children.Add(timeCard);
+
+            var toolsCard = GlassCard(new Thickness(16, 16, 16, 16), 20);
+            toolsCard.Margin = new Thickness(0, 0, 0, 13);
+            var toolsStack = new StackPanel();
+            toolsStack.Children.Add(MakeText("CONTROL CENTER", 9, "Muted", FontWeights.Bold, new Thickness(0, 0, 0, 12)));
+            toolsStack.Children.Add(QuickActionButton("Network & internet", delegate { OpenSetting("ms-settings:network-status"); }));
+            toolsStack.Children.Add(QuickActionButton("Display settings", delegate { OpenSetting("ms-settings:display"); }));
+            toolsStack.Children.Add(QuickActionButton("Sound settings", delegate { OpenSetting("ms-settings:sound"); }));
+            toolsStack.Children.Add(QuickActionButton("Bluetooth settings", delegate { OpenSetting("ms-settings:bluetooth"); }));
+            toolsCard.Child = toolsStack;
+            right.Children.Add(toolsCard);
+
+            var deviceCard = GlassCard(new Thickness(16, 14, 16, 14), 18);
+            var deviceStack = new StackPanel();
+            deviceStack.Children.Add(MakeText("THIS DEVICE", 9, "Muted", FontWeights.Bold, new Thickness(0, 0, 0, 8)));
+            _deviceSummary = MakeText("Reading basic Windows hardware information…", 10, "Muted");
+            _deviceSummary.TextWrapping = TextWrapping.Wrap;
+            deviceStack.Children.Add(_deviceSummary);
+            deviceCard.Child = deviceStack;
+            right.Children.Add(deviceCard);
+        }
+
+        private void BuildTaskbar(Grid layout)
+        {
+            var taskbar = GlassCard(new Thickness(12, 8, 12, 8), 22);
+            Grid.SetRow(taskbar, 2);
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var start = MakeButton("◈  Start", ShowStart, true, 12, 48);
+            start.Width = 110;
+            grid.Children.Add(start);
+
+            var dock = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            dock.Children.Add(DockButton("▤", "File Explorer", delegate { LaunchBuiltin("@explorer"); }));
+            dock.Children.Add(DockButton("◎", "Browser", delegate { LaunchBuiltin("@browser"); }));
+            dock.Children.Add(DockButton("▦", "Calculator", delegate { LaunchBuiltin("@calculator"); }));
+            dock.Children.Add(DockButton("▧", "Paint", delegate { LaunchBuiltin("@paint"); }));
+            dock.Children.Add(DockButton("⚙", "Windows Settings", OpenWindowsSettings));
+            dock.Children.Add(DockButton("▥", "Task Manager", delegate { LaunchBuiltin("@taskmanager"); }));
+            Grid.SetColumn(dock, 1);
+            grid.Children.Add(dock);
+
+            var status = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Right };
+            status.Children.Add(MakeText(_settings.PerformanceMode ? "◌  LOW EFFECTS" : "◌  GLASS MODE", 9, "Muted", FontWeights.SemiBold));
+            var exit = MakeButton("Exit AeroOS  ×", delegate { Close(); }, false, 10, 38);
+            exit.Margin = new Thickness(15, 0, 0, 0);
+            status.Children.Add(exit);
+            Grid.SetColumn(status, 2);
+            grid.Children.Add(status);
+
+            taskbar.Child = grid;
+            layout.Children.Add(taskbar);
+        }
+
+        private Grid BuildStartOverlay()
+        {
+            var overlay = new Grid
+            {
+                Background = BrushFrom("#99050A18"),
+                Visibility = Visibility.Collapsed
+            };
+            overlay.MouseDown += delegate(object sender, MouseButtonEventArgs e)
+            {
+                if (ReferenceEquals(e.OriginalSource, overlay)) overlay.Visibility = Visibility.Collapsed;
+            };
+            var card = GlassCard(new Thickness(24, 22, 24, 20), 22);
+            card.Width = 630;
+            card.Height = 550;
+            card.HorizontalAlignment = HorizontalAlignment.Left;
+            card.VerticalAlignment = VerticalAlignment.Bottom;
+            card.Margin = new Thickness(26, 0, 0, 105);
+            card.PreviewMouseDown += delegate(object sender, MouseButtonEventArgs e) { e.Handled = true; };
+            var stack = new DockPanel();
+
+            var top = new StackPanel();
+            var titleRow = new Grid();
+            titleRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            titleRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            titleRow.Children.Add(MakeText("Start", 24, "Text", FontWeights.SemiBold));
+            var close = MakeButton("✕", delegate { overlay.Visibility = Visibility.Collapsed; }, false, 10, 32, 38);
+            Grid.SetColumn(close, 1);
+            titleRow.Children.Add(close);
+            top.Children.Add(titleRow);
+            top.Children.Add(MakeText("Find your apps and open Windows tools.", 11, "Muted", FontWeights.Normal, new Thickness(0, 2, 0, 14)));
+
+            var search = new TextBox
+            {
+                Height = 42,
+                Padding = new Thickness(13, 9, 13, 9),
+                FontSize = 12,
+                Background = BrushFrom("#331FFFFFF"),
+                Foreground = TextBrush(),
+                BorderBrush = LineBrush(),
+                CaretBrush = AccentBrush(),
+                ToolTip = "Search installed Start Menu apps"
+            };
+            search.TextChanged += StartSearch_TextChanged;
+            _startSearch = search;
+            top.Children.Add(search);
+            top.Children.Add(MakeText("PINNED WINDOWS TOOLS", 9, "Muted", FontWeights.Bold, new Thickness(2, 17, 0, 9)));
+            var pinned = new WrapPanel { Margin = new Thickness(-4, 0, -4, 9) };
+            pinned.Children.Add(StartPinned("▤", "Explorer", delegate { LaunchBuiltin("@explorer"); }));
+            pinned.Children.Add(StartPinned("◎", "Browser", delegate { LaunchBuiltin("@browser"); }));
+            pinned.Children.Add(StartPinned("⚙", "Settings", OpenWindowsSettings));
+            pinned.Children.Add(StartPinned("▦", "Calculator", delegate { LaunchBuiltin("@calculator"); }));
+            pinned.Children.Add(StartPinned("▧", "Paint", delegate { LaunchBuiltin("@paint"); }));
+            pinned.Children.Add(StartPinned("▤", "Notepad", delegate { LaunchBuiltin("@notepad"); }));
+            top.Children.Add(pinned);
+            top.Children.Add(MakeText("INSTALLED APPLICATIONS", 9, "Muted", FontWeights.Bold, new Thickness(2, 5, 0, 8)));
+            DockPanel.SetDock(top, Dock.Top);
+            stack.Children.Add(top);
+
+            var scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+            _startResults = new StackPanel();
+            scroll.Content = _startResults;
+            stack.Children.Add(scroll);
+            var footer = MakeText("AeroOS opens apps through Windows. It does not install or modify them.", 9, "Muted", FontWeights.Normal, new Thickness(1, 8, 0, 0));
+            DockPanel.SetDock(footer, Dock.Bottom);
+            stack.Children.Add(footer);
+
+            card.Child = stack;
+            overlay.Children.Add(card);
+            return overlay;
+        }
+
+        private Grid BuildSettingsOverlay()
+        {
+            var overlay = new Grid
+            {
+                Background = BrushFrom("#AA050A18"),
+                Visibility = Visibility.Collapsed
+            };
+            overlay.MouseDown += delegate(object sender, MouseButtonEventArgs e)
+            {
+                if (ReferenceEquals(e.OriginalSource, overlay)) overlay.Visibility = Visibility.Collapsed;
+            };
+            var card = GlassCard(new Thickness(27, 24, 27, 24), 23);
+            card.Width = 650;
+            card.Height = 500;
+            card.HorizontalAlignment = HorizontalAlignment.Center;
+            card.VerticalAlignment = VerticalAlignment.Center;
+            card.PreviewMouseDown += delegate(object sender, MouseButtonEventArgs e) { e.Handled = true; };
+            var stack = new StackPanel();
+
+            var titleRow = new Grid();
+            titleRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            titleRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            titleRow.Children.Add(MakeText("Personalize AeroOS", 23, "Text", FontWeights.SemiBold));
+            var close = MakeButton("✕", delegate { overlay.Visibility = Visibility.Collapsed; }, false, 10, 34, 42);
+            Grid.SetColumn(close, 1);
+            titleRow.Children.Add(close);
+            stack.Children.Add(titleRow);
+            stack.Children.Add(MakeText("A lightweight desktop experience, with settings kept inside AeroOS.", 11, "Muted", FontWeights.Normal, new Thickness(0, 3, 0, 20)));
+
+            stack.Children.Add(SettingCard("Appearance", "Switch between a deep glass look and a brighter workspace.",
+                MakeButton(_settings.Theme == "Dark" ? "Switch to Light" : "Switch to Dark", delegate
+                {
+                    _settings.Theme = _settings.Theme == "Dark" ? "Light" : "Dark";
+                    SaveSettings();
+                    BuildShell();
+                    ShowSettings();
+                }, false, 11, 38)));
+
+            var accentRow = new WrapPanel { Margin = new Thickness(0, 8, 0, 8) };
+            accentRow.Children.Add(MakeText("ACCENT COLOUR", 9, "Muted", FontWeights.Bold, new Thickness(2, 7, 12, 0)));
+            accentRow.Children.Add(AccentChoice("#8B7CF6", "Violet"));
+            accentRow.Children.Add(AccentChoice("#4C8DFF", "Blue"));
+            accentRow.Children.Add(AccentChoice("#29B6C8", "Teal"));
+            accentRow.Children.Add(AccentChoice("#E879A8", "Rose"));
+            stack.Children.Add(accentRow);
+
+            var performance = MakeButton(_settings.PerformanceMode ? "✓  Reduced effects: ON" : "◯  Reduced effects: OFF",
+                delegate
+                {
+                    _settings.PerformanceMode = !_settings.PerformanceMode;
+                    SaveSettings();
+                    BuildShell();
+                    ShowSettings();
+                }, false, 11, 40);
+            stack.Children.Add(SettingCard("Performance", "Reduced effects avoid the custom background image and keep the interface static for older graphics hardware.", performance));
+
+            var wallpaperRow = new StackPanel { Orientation = Orientation.Horizontal };
+            wallpaperRow.Children.Add(MakeButton("Choose wallpaper", ChooseWallpaper_Click, false, 11, 38));
+            var clearWallpaper = MakeButton("Remove wallpaper", delegate
+            {
+                _settings.WallpaperPath = string.Empty;
+                SaveSettings();
+                BuildShell();
+                ShowSettings();
+            }, false, 11, 38);
+            clearWallpaper.Margin = new Thickness(8, 0, 0, 0);
+            wallpaperRow.Children.Add(clearWallpaper);
+            stack.Children.Add(SettingCard("Workspace background", "Wallpaper is displayed only inside AeroOS. Your Windows wallpaper is never changed.", wallpaperRow));
+
+            var bottom = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 17, 0, 0) };
+            bottom.Children.Add(MakeButton("Open Windows Settings", OpenWindowsSettings, false, 10, 36));
+            var closeBottom = MakeButton("Done", delegate { overlay.Visibility = Visibility.Collapsed; }, true, 10, 36);
+            closeBottom.Margin = new Thickness(8, 0, 0, 0);
+            bottom.Children.Add(closeBottom);
+            stack.Children.Add(bottom);
+
+            card.Child = stack;
+            overlay.Children.Add(card);
+            return overlay;
+        }
+
+        private Border SettingCard(string title, string description, UIElement control)
+        {
+            var card = GlassCard(new Thickness(14, 12, 14, 12), 15);
+            card.Margin = new Thickness(0, 0, 0, 9);
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var textStack = new StackPanel();
+            textStack.Children.Add(MakeText(title, 12, "Text", FontWeights.SemiBold));
+            textStack.Children.Add(MakeText(description, 9, "Muted", FontWeights.Normal, new Thickness(0, 3, 12, 0)));
+            grid.Children.Add(textStack);
+            Grid.SetColumn(control, 1);
+            control.VerticalAlignment = VerticalAlignment.Center;
+            grid.Children.Add(control);
+            card.Child = grid;
+            return card;
+        }
+
+        private Button AccentChoice(string color, string label)
+        {
+            var button = MakeButton("● " + label, delegate
+            {
+                _settings.AccentColor = color;
+                SaveSettings();
+                BuildShell();
+                ShowSettings();
+            }, false, 9, 32);
+            button.Margin = new Thickness(3, 0, 3, 0);
+            button.Foreground = BrushFrom(color);
+            return button;
+        }
+
+        private Button PlaceButton(string glyph, string label, string path)
+        {
+            return PlaceActionButton(glyph, label, delegate { OpenFolder(path); });
+        }
+
+        private Button PlaceActionButton(string glyph, string label, Action action)
+        {
+            var button = new Button
+            {
+                Content = glyph + "    " + label,
+                HorizontalContentAlignment = HorizontalAlignment.Left,
+                Height = 36,
+                Margin = new Thickness(0, 2, 0, 2),
+                Padding = new Thickness(10, 4, 7, 4),
+                Background = Brushes.Transparent,
+                Foreground = TextBrush(),
+                BorderBrush = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                FontSize = 11,
+                Cursor = Cursors.Hand,
+                FocusVisualStyle = null
+            };
+            button.Click += delegate { action(); };
+            return button;
+        }
+
+        private Button QuickActionButton(string label, Action action)
+        {
+            var button = MakeButton("›   " + label, delegate { action(); }, false, 10, 35);
+            button.HorizontalContentAlignment = HorizontalAlignment.Left;
+            button.Margin = new Thickness(0, 2, 0, 2);
+            button.Background = BrushFrom("#1CFFFFFF");
+            return button;
+        }
+
+        private Button CreateTile(string glyph, string title, string subtitle, Action action)
+        {
+            var button = new Button
+            {
+                Width = 145,
+                Height = 116,
+                Margin = new Thickness(5),
+                Padding = new Thickness(12, 11, 12, 10),
+                Background = GlassBrush(),
+                BorderBrush = LineBrush(),
                 BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(13)
+                Cursor = Cursors.Hand,
+                FocusVisualStyle = null,
+                ToolTip = subtitle
             };
             var stack = new StackPanel();
-            stack.Children.Add(Text("▣  " + app.Name, 13, true, "TextBrush"));
-            stack.Children.Add(Text(app.Category, 10, false, "MutedBrush", 0, 4));
-            var buttons = new WrapPanel { Margin = new Thickness(0, 12, 0, 0) };
-            buttons.Children.Add(ActionButton("Launch", delegate { LaunchApplication(app); }, true, 8));
-            if (!compact) buttons.Children.Add(ActionButton(_settings.PinnedPaths.Contains(app.Path, StringComparer.OrdinalIgnoreCase) ? "Unpin" : "Pin", delegate { TogglePin(app); }, false, 8));
-            stack.Children.Add(buttons);
-            card.Child = stack;
-            return card;
+            stack.Children.Add(MakeText(glyph, 24, "Accent", FontWeights.Normal, new Thickness(0, 0, 0, 9)));
+            stack.Children.Add(MakeText(title, 11, "Text", FontWeights.SemiBold));
+            stack.Children.Add(MakeText(subtitle, 8, "Muted", FontWeights.Normal, new Thickness(0, 3, 0, 0)));
+            button.Content = stack;
+            button.Click += delegate { action(); };
+            return button;
         }
 
-        private Border MetricCard(string title, string value, string description)
+        private Button StartPinned(string glyph, string label, Action action)
         {
-            var card = new Border { Width = 205, MinHeight = 112, Margin = new Thickness(0, 0, 12, 12), Padding = new Thickness(16), Background = GetBrush("CardBrush"), BorderBrush = GetBrush("LineBrush"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(13) };
-            var stack = new StackPanel();
-            stack.Children.Add(Text(title.ToUpperInvariant(), 10, true, "MutedBrush"));
-            stack.Children.Add(Text(value, 23, true, "TextBrush", 0, 6));
-            stack.Children.Add(Text(description, 10, false, "MutedBrush"));
-            card.Child = stack;
-            return card;
-        }
-
-        private Border QuickCard(string title, string description, Action action)
-        {
-            var card = new Border { Width = 258, MinHeight = 105, Margin = new Thickness(0, 0, 12, 12), Padding = new Thickness(16), Background = GetBrush("CardBrush"), BorderBrush = GetBrush("LineBrush"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(13) };
-            var stack = new StackPanel();
-            stack.Children.Add(Text(title, 14, true, "TextBrush"));
-            stack.Children.Add(Text(description, 11, false, "MutedBrush", 0, 6));
-            stack.Children.Add(ActionButton("Open", delegate { action(); }, false, 8));
-            card.Child = stack;
-            return card;
-        }
-
-        private Border CreateSectionCard(string title, string description)
-        {
-            var card = new Border { Background = GetBrush("PanelBrush"), BorderBrush = GetBrush("LineBrush"), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(14), Padding = new Thickness(19), Margin = new Thickness(0, 0, 0, 15) };
-            var stack = new StackPanel();
-            stack.Children.Add(Text(title, 16, true, "TextBrush"));
-            stack.Children.Add(Text(description, 11, false, "MutedBrush", 0, 5));
-            card.Child = stack;
-            return card;
-        }
-
-        private Border InfoCard(string title, string description)
-        {
-            var card = CreateSectionCard(title, description);
-            return card;
-        }
-
-        private void AddHeading(string title, string subtitle)
-        {
-            ContentPanel.Children.Add(Text(title, 27, true, "TextBrush"));
-            ContentPanel.Children.Add(Text(subtitle, 12, false, "MutedBrush", 0, 22));
-        }
-
-        private void AddSectionTitle(string title, string subtitle)
-        {
-            ContentPanel.Children.Add(Text(title, 17, true, "TextBrush", 0, 3));
-            ContentPanel.Children.Add(Text(subtitle, 10, false, "MutedBrush", 0, 11));
-        }
-
-        private TextBlock Text(string value, double size, bool bold, string brushKey, double marginTop = 0, double marginBottom = 0)
-        {
-            return new TextBlock
+            var button = new Button
             {
-                Text = value,
-                FontSize = size,
-                FontWeight = bold ? FontWeights.SemiBold : FontWeights.Normal,
-                Foreground = GetBrush(brushKey),
-                TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(0, marginTop, 0, marginBottom)
+                Width = 88,
+                Height = 70,
+                Margin = new Thickness(4),
+                Background = GlassBrush(),
+                BorderBrush = LineBrush(),
+                BorderThickness = new Thickness(1),
+                Cursor = Cursors.Hand,
+                FocusVisualStyle = null
+            };
+            var stack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+            stack.Children.Add(MakeText(glyph, 22, "Accent", FontWeights.Normal));
+            stack.Children.Add(MakeText(label, 9, "Text", FontWeights.SemiBold));
+            button.Content = stack;
+            button.Click += delegate { action(); };
+            return button;
+        }
+
+        private Button DockButton(string glyph, string label, Action action)
+        {
+            var button = new Button
+            {
+                Width = 46,
+                Height = 46,
+                Margin = new Thickness(3, 0, 3, 0),
+                Background = Brushes.Transparent,
+                BorderBrush = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                Foreground = TextBrush(),
+                FontSize = 21,
+                Content = glyph,
+                ToolTip = label,
+                Cursor = Cursors.Hand,
+                FocusVisualStyle = null
+            };
+            button.Click += delegate { action(); };
+            return button;
+        }
+
+        private Border GlassCard(Thickness padding, double radius)
+        {
+            return new Border
+            {
+                Background = GlassBrush(),
+                BorderBrush = LineBrush(),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(radius),
+                Padding = padding
             };
         }
 
-        private Button ActionButton(string label, RoutedEventHandler handler, bool primary, double rightMargin = 9)
+        private Button MakeButton(string label, Action action, bool primary, double fontSize, double height, double width = double.NaN)
         {
             var button = new Button
             {
                 Content = label,
-                Margin = new Thickness(0, 0, rightMargin, 7),
-                Padding = new Thickness(13, 8, 13, 8),
-                Background = primary ? GetBrush("AccentBrush") : GetBrush("CardBrush"),
-                Foreground = primary ? Brushes.White : GetBrush("TextBrush"),
-                BorderBrush = primary ? GetBrush("AccentBrush") : GetBrush("LineBrush"),
+                Height = height,
+                MinWidth = double.IsNaN(width) ? 0 : width,
+                Padding = new Thickness(14, 5, 14, 5),
+                Margin = new Thickness(4, 0, 4, 0),
+                Background = primary ? AccentBrush() : GlassBrush(),
+                Foreground = primary ? Brushes.White : TextBrush(),
+                BorderBrush = primary ? AccentBrush() : LineBrush(),
                 BorderThickness = new Thickness(1),
-                FontSize = 11
+                FontSize = fontSize,
+                FontWeight = FontWeights.SemiBold,
+                Cursor = Cursors.Hand,
+                FocusVisualStyle = null
             };
-            button.Click += handler;
+            button.Click += delegate { action(); };
             return button;
         }
 
-        private Button ChoiceButton(string label, Action action)
+        private TextBlock MakeText(string text, double size, string tone, FontWeight? weight = null, Thickness? margin = null)
         {
-            var button = ActionButton(label, delegate { action(); }, false, 9);
-            return button;
-        }
-
-        private Brush GetBrush(string key)
-        {
-            return (Brush)FindResource(key);
-        }
-
-        private void ApplyTheme()
-        {
-            bool dark = !string.Equals(_settings.Theme, "Light", StringComparison.OrdinalIgnoreCase);
-            Resources["WindowBgBrush"] = BrushFrom(dark ? "#0B1220" : "#F3F6FB");
-            Resources["PanelBrush"] = BrushFrom(dark ? "#111D30" : "#FFFFFF");
-            Resources["CardBrush"] = BrushFrom(dark ? "#17263D" : "#FFFFFF");
-            Resources["TextBrush"] = BrushFrom(dark ? "#F2F6FC" : "#172033");
-            Resources["MutedBrush"] = BrushFrom(dark ? "#A2B2C7" : "#64748B");
-            Resources["LineBrush"] = BrushFrom(dark ? "#2A3A52" : "#DCE3ED");
-            Resources["AccentBrush"] = BrushFrom(_settings.AccentColor);
-            Background = GetBrush("WindowBgBrush");
-            ApplyWallpaper();
-        }
-
-        private static SolidColorBrush BrushFrom(string color)
-        {
-            try { return new SolidColorBrush((Color)ColorConverter.ConvertFromString(color)); }
-            catch { return new SolidColorBrush(Color.FromRgb(139, 124, 246)); }
-        }
-
-        private void ApplyWallpaper()
-        {
-            if (ContentSurface == null) return;
-            if (_settings.PerformanceMode || string.IsNullOrWhiteSpace(_settings.WallpaperPath) || !File.Exists(_settings.WallpaperPath))
+            Brush brush = tone == "Text" ? TextBrush()
+                : tone == "Accent" ? AccentBrush()
+                : tone == "Muted" ? MutedBrush()
+                : TextBrush();
+            return new TextBlock
             {
-                ContentSurface.Background = GetBrush("WindowBgBrush");
+                Text = text,
+                FontSize = size,
+                FontWeight = weight ?? FontWeights.Normal,
+                Foreground = brush,
+                Margin = margin ?? new Thickness(0),
+                VerticalAlignment = VerticalAlignment.Center,
+                TextTrimming = TextTrimming.CharacterEllipsis
+            };
+        }
+
+        private void RenderStartResults(string filter)
+        {
+            if (_startResults == null) return;
+            _startResults.Children.Clear();
+            var all = _builtInApps.Concat(_applications).ToList();
+            var matches = all.Where(x => string.IsNullOrWhiteSpace(filter)
+                || x.Name.IndexOf(filter.Trim(), StringComparison.CurrentCultureIgnoreCase) >= 0
+                || (x.Category ?? string.Empty).IndexOf(filter.Trim(), StringComparison.CurrentCultureIgnoreCase) >= 0)
+                .OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase)
+                .Take(40)
+                .ToList();
+
+            if (matches.Count == 0)
+            {
+                _startResults.Children.Add(MakeText(_isLoadingApps ? "Scanning Start Menu shortcuts…" : "No matching apps found.", 11, "Muted", FontWeights.Normal, new Thickness(5, 12, 5, 12)));
                 return;
             }
-            try
+
+            foreach (var app in matches)
             {
-                var bitmap = new BitmapImage();
-                bitmap.BeginInit();
-                bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                bitmap.UriSource = new Uri(_settings.WallpaperPath, UriKind.Absolute);
-                bitmap.DecodePixelWidth = 1600;
-                bitmap.EndInit();
-                bitmap.Freeze();
-                ContentSurface.Background = new ImageBrush(bitmap) { Stretch = Stretch.UniformToFill, Opacity = 0.22 };
-            }
-            catch
-            {
-                ContentSurface.Background = GetBrush("WindowBgBrush");
+                var button = new Button
+                {
+                    Height = 37,
+                    Margin = new Thickness(0, 1, 0, 1),
+                    Padding = new Thickness(10, 4, 10, 4),
+                    Background = Brushes.Transparent,
+                    Foreground = TextBrush(),
+                    BorderBrush = Brushes.Transparent,
+                    BorderThickness = new Thickness(0),
+                    HorizontalContentAlignment = HorizontalAlignment.Left,
+                    Cursor = Cursors.Hand,
+                    FocusVisualStyle = null
+                };
+                button.Content = "◦    " + app.Name + "     ·     " + app.Category;
+                button.Click += delegate
+                {
+                    _startOverlay.Visibility = Visibility.Collapsed;
+                    LaunchEntry(app);
+                };
+                _startResults.Children.Add(button);
             }
         }
 
-        private void ChooseWallpaper_Click(object sender, RoutedEventArgs e)
+        private void DesktopSearch_TextChanged(object sender, TextChangedEventArgs e)
         {
-            var dialog = new OpenFileDialog { Title = "Choose an AeroOS workspace image", Filter = "Image files|*.png;*.jpg;*.jpeg;*.bmp;*.gif|All files|*.*", CheckFileExists = true };
-            if (dialog.ShowDialog(this) == true)
+            if (_desktopSearch == null || string.IsNullOrWhiteSpace(_desktopSearch.Text)) return;
+            ShowStart();
+            if (_startSearch != null)
             {
-                _settings.WallpaperPath = dialog.FileName;
-                SaveSettings();
-                ApplyWallpaper();
-                RenderPersonalization();
+                _startSearch.Text = _desktopSearch.Text;
+                _startSearch.CaretIndex = _startSearch.Text.Length;
             }
         }
 
-        private void TogglePin(AppEntry app)
+        private void StartSearch_TextChanged(object sender, TextChangedEventArgs e)
         {
-            var match = _settings.PinnedPaths.FirstOrDefault(x => string.Equals(x, app.Path, StringComparison.OrdinalIgnoreCase));
-            if (match == null) _settings.PinnedPaths.Add(app.Path);
-            else _settings.PinnedPaths.Remove(match);
-            SaveSettings();
-            RenderApplications();
+            RenderStartResults(_startSearch == null ? string.Empty : _startSearch.Text);
         }
 
-        private void LaunchApplication(AppEntry app)
+        private void ShowStart()
         {
-            try
-            {
-                Process.Start(new ProcessStartInfo(app.Path) { UseShellExecute = true });
-                _settings.RecentPaths.RemoveAll(x => string.Equals(x, app.Path, StringComparison.OrdinalIgnoreCase));
-                _settings.RecentPaths.Insert(0, app.Path);
-                if (_settings.RecentPaths.Count > 8) _settings.RecentPaths.RemoveRange(8, _settings.RecentPaths.Count - 8);
-                SaveSettings();
-            }
-            catch (Exception ex)
-            {
-                ShowMessage("Could not launch " + app.Name, "Windows could not open this shortcut. The shortcut may be broken or its target may have been moved.\n\n" + ex.Message);
-            }
+            if (_settingsOverlay != null) _settingsOverlay.Visibility = Visibility.Collapsed;
+            if (_startOverlay == null) return;
+            _startOverlay.Visibility = Visibility.Visible;
+            RenderStartResults(_startSearch == null ? string.Empty : _startSearch.Text);
+            if (_startSearch != null) _startSearch.Focus();
+        }
+
+        private void ShowSettings()
+        {
+            if (_startOverlay != null) _startOverlay.Visibility = Visibility.Collapsed;
+            if (_settingsOverlay != null) _settingsOverlay.Visibility = Visibility.Visible;
+        }
+
+        private void OpenWindowsSettings()
+        {
+            OpenSetting("ms-settings:", null);
         }
 
         private void OpenSetting(string uri, string fallback)
         {
-            try { SettingsLauncher.Open(uri, fallback); }
-            catch (Exception ex) { ShowMessage("Windows settings could not be opened", ex.Message); }
+            try
+            {
+                Process.Start(new ProcessStartInfo(uri) { UseShellExecute = true });
+            }
+            catch
+            {
+                if (!string.IsNullOrWhiteSpace(fallback))
+                    Process.Start(new ProcessStartInfo("control.exe", fallback) { UseShellExecute = true });
+                else
+                    MessageBox.Show(this, "Windows could not open that Settings page. You can still use the normal Windows Settings app.", "AeroOS", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
         }
 
-        private void SafeStart(string fileName, string arguments)
+        private void OpenFolder(string path)
         {
-            try { Process.Start(new ProcessStartInfo(fileName, arguments ?? string.Empty) { UseShellExecute = true }); }
-            catch (Exception ex) { ShowMessage("Could not open " + fileName, ex.Message); }
+            try
+            {
+                if (string.IsNullOrWhiteSpace(path)) return;
+                Process.Start(new ProcessStartInfo("explorer.exe", path.StartsWith("shell:", StringComparison.OrdinalIgnoreCase) ? path : "\"" + path + "\"")
+                {
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "Windows could not open this location." + Environment.NewLine + ex.Message, "AeroOS", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
         }
 
-        private void UpdateClock()
+        private void LaunchEntry(AppEntry app)
         {
-            if (FooterClock != null) FooterClock.Text = DateTime.Now.ToString("ddd, dd MMM  •  h:mm tt");
+            if (app == null || string.IsNullOrWhiteSpace(app.Path)) return;
+            if (app.Path.StartsWith("@", StringComparison.Ordinal))
+            {
+                LaunchBuiltin(app.Path);
+                return;
+            }
+
+            try
+            {
+                Process.Start(new ProcessStartInfo(app.Path) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "Windows could not open " + app.Name + "." + Environment.NewLine + ex.Message, "AeroOS", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        private void LaunchBuiltin(string key)
+        {
+            try
+            {
+                switch (key)
+                {
+                    case "@explorer": Process.Start(new ProcessStartInfo("explorer.exe") { UseShellExecute = true }); break;
+                    case "@browser": Process.Start(new ProcessStartInfo("https://www.bing.com") { UseShellExecute = true }); break;
+                    case "@settings": OpenWindowsSettings(); break;
+                    case "@calculator": Process.Start(new ProcessStartInfo("calc.exe") { UseShellExecute = true }); break;
+                    case "@paint": Process.Start(new ProcessStartInfo("mspaint.exe") { UseShellExecute = true }); break;
+                    case "@notepad": Process.Start(new ProcessStartInfo("notepad.exe") { UseShellExecute = true }); break;
+                    case "@taskmanager": Process.Start(new ProcessStartInfo("taskmgr.exe") { UseShellExecute = true }); break;
+                    case "@control": Process.Start(new ProcessStartInfo("control.exe") { UseShellExecute = true }); break;
+                    default: break;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "Windows could not open that app. It may not be available on this PC." + Environment.NewLine + ex.Message, "AeroOS", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+        }
+
+        private List<AppEntry> CreateBuiltInApps()
+        {
+            return new List<AppEntry>
+            {
+                new AppEntry { Name = "File Explorer", Path = "@explorer", Category = "Windows tools" },
+                new AppEntry { Name = "Web browser", Path = "@browser", Category = "Internet" },
+                new AppEntry { Name = "Windows Settings", Path = "@settings", Category = "Windows tools" },
+                new AppEntry { Name = "Calculator", Path = "@calculator", Category = "Accessories" },
+                new AppEntry { Name = "Paint", Path = "@paint", Category = "Accessories" },
+                new AppEntry { Name = "Notepad", Path = "@notepad", Category = "Accessories" },
+                new AppEntry { Name = "Task Manager", Path = "@taskmanager", Category = "System tools" },
+                new AppEntry { Name = "Control Panel", Path = "@control", Category = "System tools" }
+            };
+        }
+
+        private void ChooseWallpaper_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "Choose a wallpaper for AeroOS only",
+                Filter = "Image files|*.png;*.jpg;*.jpeg;*.bmp|All files|*.*",
+                CheckFileExists = true
+            };
+            if (dialog.ShowDialog(this) == true)
+            {
+                _settings.WallpaperPath = dialog.FileName;
+                SaveSettings();
+                BuildShell();
+                ShowSettings();
+            }
         }
 
         private void SaveSettings()
         {
             try { _preferences.Save(_settings); }
-            catch (Exception ex) { ShowMessage("Could not save AeroOS preferences", "AeroOS could not save its own settings file. Windows settings were not changed.\n\n" + ex.Message); }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, "AeroOS could not save its own preferences. Windows settings were not changed." + Environment.NewLine + ex.Message, "AeroOS", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
         }
 
-        private void ShowMessage(string title, string message)
+        private void UpdateClock()
         {
-            MessageBox.Show(this, message, title, MessageBoxButton.OK, MessageBoxImage.Information);
+            if (_clockLabel != null) _clockLabel.Text = DateTime.Now.ToString("h:mm tt");
+            if (_dateLabel != null) _dateLabel.Text = DateTime.Now.ToString("ddd, dd MMM yyyy");
+        }
+
+        private static string GetGreeting()
+        {
+            var hour = DateTime.Now.Hour;
+            if (hour < 12) return "Good morning";
+            if (hour < 18) return "Good afternoon";
+            return "Good evening";
+        }
+
+        private Brush TextBrush()
+        {
+            return _settings.Theme == "Light" ? BrushFrom("#182238") : BrushFrom("#F4F7FF");
+        }
+
+        private Brush MutedBrush()
+        {
+            return _settings.Theme == "Light" ? BrushFrom("#68758C") : BrushFrom("#AAB8D0");
+        }
+
+        private Brush AccentBrush()
+        {
+            return BrushFrom(string.IsNullOrWhiteSpace(_settings.AccentColor) ? "#8B7CF6" : _settings.AccentColor);
+        }
+
+        private Brush LineBrush()
+        {
+            return _settings.Theme == "Light" ? BrushFrom("#99FFFFFF") : BrushFrom("#44FFFFFF");
+        }
+
+        private Brush GlassBrush()
+        {
+            return _settings.Theme == "Light" ? BrushFrom("#DDF7FAFF") : BrushFrom("#C817213A");
+        }
+
+        private static Brush BrushFrom(string color)
+        {
+            try { return new SolidColorBrush((Color)ColorConverter.ConvertFromString(color)); }
+            catch { return new SolidColorBrush(Color.FromRgb(139, 124, 246)); }
+        }
+
+        private static Color ColorFrom(string color)
+        {
+            try { return (Color)ColorConverter.ConvertFromString(color); }
+            catch { return Color.FromRgb(16, 23, 44); }
         }
     }
 }
-
