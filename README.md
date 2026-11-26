@@ -1,6 +1,6 @@
 # AeroOS Windows Edition
 
-**AeroOS Windows Edition 0.3.0** is a custom, full-screen desktop launcher for Windows 10. It is a standalone Windows application project in the **AeroLauncher** repository; it is separate from the Linux Aero-Os repository and separate from any AeroShell Desktop project.
+**AeroOS Windows Edition 0.4.0** is a custom, full-screen desktop launcher for Windows 10. It is a standalone Windows application project in the **AeroLauncher** repository; it is separate from the Linux Aero-Os repository and separate from any AeroShell Desktop project.
 
 AeroOS gives the user a custom glass-style workspace with its own visual taskbar, Start panel, app search, quick-launch tiles, folder shortcuts, clock, quick settings links and personalization. It launches the existing Windows applications rather than replacing them.
 
@@ -10,7 +10,7 @@ AeroOS runs as one ordinary, borderless, maximized WPF window. It does **not** r
 
 The project must never erase, format, repartition, reset, reinstall or replace Windows. It is not an operating-system installer or Windows debloater.
 
-## 0.3.0 launcher features
+## 0.4.0 launcher features
 
 - Full-screen, custom AeroOS workspace with layered glass gradients, luminous edge highlights and static ambient colour glows.
 - Rounded glass control templates with consistent hover, press and focus states.
@@ -52,4 +52,16 @@ The optional wallpaper path is used only by the AeroOS window. It does not chang
 
 ## Build status
 
-Version 0.3.0 passed the GitHub Actions static source checks and Windows Release compilation. The portable ZIP was generated and its SHA-256 matched the build output; the ZIP integrity and contents were inspected. Interactive runtime behaviour, display scaling/layout, Windows Defender scanning, and real CPU/RAM/battery impact still need testing on the HP ProBook. No malware-free certification or measured performance result is claimed.
+Version 0.4.0 passed the GitHub Actions static source checks and Windows Release compilation. The portable ZIP was generated and its SHA-256 matched the build output; the ZIP integrity and contents were inspected. Interactive runtime behaviour, display scaling/layout, Windows Defender scanning, and real CPU/RAM/battery impact still need testing on the HP ProBook. No malware-free certification or measured performance result is claimed.
+
+
+## 0.4.0 usability improvements
+
+- Start Menu search ranks prefix matches first, supports Enter to launch the best match, and opens with Ctrl+Space.
+- Apps can be pinned/unpinned from search results. Up to 12 custom pins are stored in AeroOS preferences.
+- Recently opened apps appear in Start and are stored locally, with a maximum of eight entries.
+- The dashboard clock/date update alongside the header clock.
+- The desktop layout adapts to narrower screens by collapsing the optional device/control column.
+- Start and Personalize panels use screen-aware sizing; Personalize content is scrollable.
+- The hardware summary includes best-effort graphics, available memory and system-drive capacity.
+- Start Menu shortcut discovery has depth and result limits and skips reparse-point folders.
