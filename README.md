@@ -52,4 +52,4 @@ The optional wallpaper path is used only by the AeroOS window. It does not chang
 
 ## Build status
 
-Source implementation for 0.3.0 has been committed. The glass visual refresh must pass the Windows CI build and then be checked interactively on the HP ProBook for layout, controls, responsiveness and performance. No malware-free certification or measured performance result is claimed.
+Version 0.3.0 passed the GitHub Actions static source checks and Windows Release compilation. The portable ZIP was generated and its SHA-256 matched the build output; the ZIP integrity and contents were inspected. Interactive runtime behaviour, display scaling/layout, Windows Defender scanning, and real CPU/RAM/battery impact still need testing on the HP ProBook. No malware-free certification or measured performance result is claimed.
