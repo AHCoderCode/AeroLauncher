@@ -338,10 +338,10 @@ namespace AeroOS.Windows
             toolsCard.Margin = new Thickness(0, 0, 0, 13);
             var toolsStack = new StackPanel();
             toolsStack.Children.Add(MakeText("CONTROL CENTER", 9, "Muted", FontWeights.Bold, new Thickness(0, 0, 0, 12)));
-            toolsStack.Children.Add(QuickActionButton("Network & internet", delegate { OpenSetting("ms-settings:network-status"); }));
-            toolsStack.Children.Add(QuickActionButton("Display settings", delegate { OpenSetting("ms-settings:display"); }));
-            toolsStack.Children.Add(QuickActionButton("Sound settings", delegate { OpenSetting("ms-settings:sound"); }));
-            toolsStack.Children.Add(QuickActionButton("Bluetooth settings", delegate { OpenSetting("ms-settings:bluetooth"); }));
+            toolsStack.Children.Add(QuickActionButton("Network & internet", delegate { OpenSetting("ms-settings:network-status", null); }));
+            toolsStack.Children.Add(QuickActionButton("Display settings", delegate { OpenSetting("ms-settings:display", null); }));
+            toolsStack.Children.Add(QuickActionButton("Sound settings", delegate { OpenSetting("ms-settings:sound", null); }));
+            toolsStack.Children.Add(QuickActionButton("Bluetooth settings", delegate { OpenSetting("ms-settings:bluetooth", null); }));
             toolsCard.Child = toolsStack;
             right.Children.Add(toolsCard);
 
