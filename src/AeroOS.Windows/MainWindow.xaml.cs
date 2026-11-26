@@ -33,6 +33,8 @@ namespace AeroOS.Windows
         private Grid _startOverlay;
         private Grid _settingsOverlay;
         private TextBox _desktopSearch;
+        private TextBlock _dashboardClockLabel;
+        private TextBlock _dashboardDateLabel;
         private bool _isLoadingApps;
 
         public MainWindow()
@@ -76,8 +78,11 @@ namespace AeroOS.Windows
                 if (_deviceSummary != null)
                 {
                     _deviceSummary.Text = snapshot.CpuName + Environment.NewLine
+                        + "Graphics: " + snapshot.GpuName + Environment.NewLine
                         + snapshot.Architecture + "  •  " + snapshot.LogicalProcessors + " logical processors"
-                        + (snapshot.TotalMemoryGb > 0 ? Environment.NewLine + snapshot.TotalMemoryGb.ToString("0.0") + " GB memory" : string.Empty);
+                        + (snapshot.TotalMemoryGb > 0 ? Environment.NewLine + snapshot.TotalMemoryGb.ToString("0.0") + " GB RAM total" : string.Empty)
+                        + (snapshot.AvailableMemoryGb > 0 ? "  •  " + snapshot.AvailableMemoryGb.ToString("0.0") + " GB available" : string.Empty)
+                        + (snapshot.TotalSystemDriveGb > 0 ? Environment.NewLine + "System drive: " + snapshot.FreeSystemDriveGb.ToString("0.0") + " GB free of " + snapshot.TotalSystemDriveGb.ToString("0.0") + " GB" : string.Empty);
                 }
             }
             catch
@@ -93,6 +98,21 @@ namespace AeroOS.Windows
 
         private void Window_KeyDown(object sender, KeyEventArgs e)
         {
+            if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.Space)
+            {
+                if (_startOverlay != null && _startOverlay.Visibility == Visibility.Visible)
+                    _startOverlay.Visibility = Visibility.Collapsed;
+                else
+                    ShowStart();
+                e.Handled = true;
+                return;
+            }
+            if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.OemComma)
+            {
+                ShowSettings();
+                e.Handled = true;
+                return;
+            }
             if (e.Key == Key.Escape)
             {
                 if (_startOverlay != null && _startOverlay.Visibility == Visibility.Visible)
@@ -331,14 +351,23 @@ namespace AeroOS.Windows
             var right = new StackPanel();
             Grid.SetColumn(right, 2);
             body.Children.Add(right);
+            body.SizeChanged += delegate
+            {
+                var compact = body.ActualWidth < 1080;
+                body.ColumnDefinitions[0].Width = new GridLength(compact ? 172 : 205);
+                body.ColumnDefinitions[2].Width = new GridLength(compact ? 0 : 248);
+                right.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+                center.Margin = compact ? new Thickness(14, 4, 14, 4) : new Thickness(20, 4, 20, 4);
+            };
 
             var timeCard = GlassCard(new Thickness(18, 18, 18, 18), 20);
             timeCard.Margin = new Thickness(0, 0, 0, 13);
             var timeStack = new StackPanel();
             timeStack.Children.Add(MakeText("YOUR MOMENT", 9, "Muted", FontWeights.Bold, new Thickness(0, 0, 0, 13)));
-            var largeTime = MakeText(DateTime.Now.ToString("h:mm"), 34, "Text", FontWeights.Light);
-            timeStack.Children.Add(largeTime);
-            timeStack.Children.Add(MakeText(DateTime.Now.ToString("dddd, dd MMMM yyyy"), 10, "Muted", FontWeights.Normal, new Thickness(0, 0, 0, 12)));
+            _dashboardClockLabel = MakeText(DateTime.Now.ToString("h:mm tt"), 34, "Text", FontWeights.Light);
+            timeStack.Children.Add(_dashboardClockLabel);
+            _dashboardDateLabel = MakeText(DateTime.Now.ToString("dddd, dd MMMM yyyy"), 10, "Muted", FontWeights.Normal, new Thickness(0, 0, 0, 12));
+            timeStack.Children.Add(_dashboardDateLabel);
             var timeDivider = new Border { Height = 1, Background = LineBrush(), Margin = new Thickness(0, 1, 0, 11) };
             timeStack.Children.Add(timeDivider);
             timeStack.Children.Add(MakeText("A little more focus. A little less clutter.", 11, "Muted"));
@@ -413,11 +442,12 @@ namespace AeroOS.Windows
                 if (ReferenceEquals(e.OriginalSource, overlay)) overlay.Visibility = Visibility.Collapsed;
             };
             var card = GlassCard(new Thickness(24, 22, 24, 20), 22);
-            card.Width = 630;
-            card.Height = 550;
+            card.Width = Math.Max(320, Math.Min(630, SystemParameters.WorkArea.Width - 40));
+            card.Height = Math.Max(300, Math.Min(550, SystemParameters.WorkArea.Height - 110));
             card.HorizontalAlignment = HorizontalAlignment.Left;
             card.VerticalAlignment = VerticalAlignment.Bottom;
-            card.Margin = new Thickness(26, 0, 0, 105);
+            var startBottomMargin = Math.Max(12, Math.Min(105, SystemParameters.WorkArea.Height - card.Height - 16));
+            card.Margin = new Thickness(20, 12, 0, startBottomMargin);
             card.PreviewMouseDown += delegate(object sender, MouseButtonEventArgs e) { e.Handled = true; };
             var stack = new DockPanel();
 
@@ -444,6 +474,7 @@ namespace AeroOS.Windows
                 ToolTip = "Search installed Start Menu apps"
             };
             search.TextChanged += StartSearch_TextChanged;
+            search.PreviewKeyDown += StartSearch_PreviewKeyDown;
             _startSearch = search;
             top.Children.Add(search);
             top.Children.Add(MakeText("PINNED WINDOWS TOOLS", 9, "Muted", FontWeights.Bold, new Thickness(2, 17, 0, 9)));
@@ -455,7 +486,6 @@ namespace AeroOS.Windows
             pinned.Children.Add(StartPinned("▧", "Paint", delegate { LaunchBuiltin("@paint"); }));
             pinned.Children.Add(StartPinned("▤", "Notepad", delegate { LaunchBuiltin("@notepad"); }));
             top.Children.Add(pinned);
-            top.Children.Add(MakeText("INSTALLED APPLICATIONS", 9, "Muted", FontWeights.Bold, new Thickness(2, 5, 0, 8)));
             DockPanel.SetDock(top, Dock.Top);
             stack.Children.Add(top);
 
@@ -484,8 +514,7 @@ namespace AeroOS.Windows
                 if (ReferenceEquals(e.OriginalSource, overlay)) overlay.Visibility = Visibility.Collapsed;
             };
             var card = GlassCard(new Thickness(27, 24, 27, 24), 23);
-            card.Width = 650;
-            card.Height = 500;
+            card.Width = Math.Max(320, Math.Min(650, SystemParameters.WorkArea.Width - 40));
             card.HorizontalAlignment = HorizontalAlignment.Center;
             card.VerticalAlignment = VerticalAlignment.Center;
             card.PreviewMouseDown += delegate(object sender, MouseButtonEventArgs e) { e.Handled = true; };
@@ -549,7 +578,17 @@ namespace AeroOS.Windows
             stack.Children.Add(bottom);
 
             card.Child = stack;
-            overlay.Children.Add(card);
+            var settingsScroll = new ScrollViewer
+            {
+                Content = card,
+                Width = card.Width,
+                Height = Math.Max(280, Math.Min(540, SystemParameters.WorkArea.Height - 40)),
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                VerticalAlignment = VerticalAlignment.Center,
+                HorizontalAlignment = HorizontalAlignment.Center
+            };
+            overlay.Children.Add(settingsScroll);
             return overlay;
         }
 
@@ -745,12 +784,49 @@ namespace AeroOS.Windows
         {
             if (_startResults == null) return;
             _startResults.Children.Clear();
+
             var all = _builtInApps.Concat(_applications).ToList();
-            var matches = all.Where(x => string.IsNullOrWhiteSpace(filter)
-                || x.Name.IndexOf(filter.Trim(), StringComparison.CurrentCultureIgnoreCase) >= 0
-                || (x.Category ?? string.Empty).IndexOf(filter.Trim(), StringComparison.CurrentCultureIgnoreCase) >= 0)
-                .OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase)
-                .Take(40)
+            var needle = (filter ?? string.Empty).Trim();
+
+            var pinned = _settings.PinnedPaths
+                .Select(path => all.FirstOrDefault(app => string.Equals(app.Path, path, StringComparison.OrdinalIgnoreCase)))
+                .Where(app => app != null)
+                .Where(app => needle.Length == 0
+                    || app.Name.IndexOf(needle, StringComparison.CurrentCultureIgnoreCase) >= 0
+                    || (app.Category ?? string.Empty).IndexOf(needle, StringComparison.CurrentCultureIgnoreCase) >= 0)
+                .ToList();
+
+            if (pinned.Count > 0)
+            {
+                _startResults.Children.Add(MakeText("YOUR PINS", 9, "Muted", FontWeights.Bold, new Thickness(3, 10, 0, 7)));
+                foreach (var app in pinned) AddAppRow(app, true);
+            }
+
+            if (needle.Length == 0)
+            {
+                var recent = _settings.RecentPaths
+                    .Select(path => all.FirstOrDefault(app => string.Equals(app.Path, path, StringComparison.OrdinalIgnoreCase)))
+                    .Where(app => app != null)
+                    .GroupBy(app => app.Path, StringComparer.OrdinalIgnoreCase)
+                    .Select(group => group.First())
+                    .Take(5)
+                    .ToList();
+
+                if (recent.Count > 0)
+                {
+                    _startResults.Children.Add(MakeText("RECENTLY OPENED", 9, "Muted", FontWeights.Bold, new Thickness(3, 13, 0, 7)));
+                    foreach (var app in recent) AddAppRow(app, IsPinned(app));
+                }
+            }
+
+            _startResults.Children.Add(MakeText("INSTALLED APPLICATIONS", 9, "Muted", FontWeights.Bold, new Thickness(3, 13, 0, 7)));
+            var matches = all
+                .Where(app => needle.Length == 0
+                    || app.Name.IndexOf(needle, StringComparison.CurrentCultureIgnoreCase) >= 0
+                    || (app.Category ?? string.Empty).IndexOf(needle, StringComparison.CurrentCultureIgnoreCase) >= 0)
+                .OrderByDescending(app => needle.Length > 0 && app.Name.StartsWith(needle, StringComparison.CurrentCultureIgnoreCase))
+                .ThenBy(app => app.Name, StringComparer.CurrentCultureIgnoreCase)
+                .Take(50)
                 .ToList();
 
             if (matches.Count == 0)
@@ -759,34 +835,111 @@ namespace AeroOS.Windows
                 return;
             }
 
-            foreach (var app in matches)
+            foreach (var app in matches) AddAppRow(app, IsPinned(app));
+        }
+
+        private void AddAppRow(AppEntry app, bool pinned)
+        {
+            var row = new Grid { Height = 38, Margin = new Thickness(0, 1, 0, 1) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var open = new Button
             {
-                var button = new Button
+                Height = 36,
+                Padding = new Thickness(10, 4, 10, 4),
+                Background = Brushes.Transparent,
+                Foreground = TextBrush(),
+                BorderBrush = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                HorizontalContentAlignment = HorizontalAlignment.Left,
+                Cursor = Cursors.Hand,
+                FocusVisualStyle = null,
+                Content = "◦    " + app.Name + "     ·     " + app.Category,
+                ToolTip = "Open " + app.Name
+            };
+            open.Click += delegate
+            {
+                _startOverlay.Visibility = Visibility.Collapsed;
+                LaunchEntry(app);
+            };
+            row.Children.Add(open);
+
+            var pin = MakeButton(pinned ? "★" : "＋", delegate { TogglePin(app); }, false, 11, 32, 38);
+            pin.ToolTip = pinned ? "Unpin " + app.Name : "Pin " + app.Name;
+            pin.Margin = new Thickness(2, 2, 1, 2);
+            Grid.SetColumn(pin, 1);
+            row.Children.Add(pin);
+            _startResults.Children.Add(row);
+        }
+
+        private bool IsPinned(AppEntry app)
+        {
+            return app != null && _settings.PinnedPaths.Any(path => string.Equals(path, app.Path, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private void TogglePin(AppEntry app)
+        {
+            if (app == null || string.IsNullOrWhiteSpace(app.Path)) return;
+            var existing = _settings.PinnedPaths.FindIndex(path => string.Equals(path, app.Path, StringComparison.OrdinalIgnoreCase));
+            if (existing >= 0)
+                _settings.PinnedPaths.RemoveAt(existing);
+            else
+            {
+                if (_settings.PinnedPaths.Count >= 12)
                 {
-                    Height = 37,
-                    Margin = new Thickness(0, 1, 0, 1),
-                    Padding = new Thickness(10, 4, 10, 4),
-                    Background = Brushes.Transparent,
-                    Foreground = TextBrush(),
-                    BorderBrush = Brushes.Transparent,
-                    BorderThickness = new Thickness(0),
-                    HorizontalContentAlignment = HorizontalAlignment.Left,
-                    Cursor = Cursors.Hand,
-                    FocusVisualStyle = null
-                };
-                button.Content = "◦    " + app.Name + "     ·     " + app.Category;
-                button.Click += delegate
-                {
-                    _startOverlay.Visibility = Visibility.Collapsed;
-                    LaunchEntry(app);
-                };
-                _startResults.Children.Add(button);
+                    MessageBox.Show(this, "AeroOS supports up to 12 custom pins. Remove one before adding another.", "AeroOS", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+                _settings.PinnedPaths.Insert(0, app.Path);
             }
+            SaveSettings();
+            RenderStartResults(_startSearch == null ? string.Empty : _startSearch.Text);
+        }
+
+        private void RememberRecent(AppEntry app)
+        {
+            if (app == null || string.IsNullOrWhiteSpace(app.Path)) return;
+            _settings.RecentPaths.RemoveAll(path => string.Equals(path, app.Path, StringComparison.OrdinalIgnoreCase));
+            _settings.RecentPaths.Insert(0, app.Path);
+            if (_settings.RecentPaths.Count > 8)
+                _settings.RecentPaths.RemoveRange(8, _settings.RecentPaths.Count - 8);
+            SaveSettings();
+            if (_startOverlay != null && _startOverlay.Visibility == Visibility.Visible)
+                RenderStartResults(_startSearch == null ? string.Empty : _startSearch.Text);
+        }
+
+        private void StartSearch_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key != Key.Enter) return;
+            var app = GetMatchingApps(_startSearch == null ? string.Empty : _startSearch.Text).FirstOrDefault();
+            if (app == null) return;
+            _startOverlay.Visibility = Visibility.Collapsed;
+            LaunchEntry(app);
+            e.Handled = true;
+        }
+
+        private IEnumerable<AppEntry> GetMatchingApps(string filter)
+        {
+            var all = _builtInApps.Concat(_applications).ToList();
+            var needle = (filter ?? string.Empty).Trim();
+            return all
+                .Where(app => needle.Length == 0
+                    || app.Name.IndexOf(needle, StringComparison.CurrentCultureIgnoreCase) >= 0
+                    || (app.Category ?? string.Empty).IndexOf(needle, StringComparison.CurrentCultureIgnoreCase) >= 0)
+                .OrderByDescending(app => needle.Length > 0 && app.Name.StartsWith(needle, StringComparison.CurrentCultureIgnoreCase))
+                .ThenBy(app => app.Name, StringComparer.CurrentCultureIgnoreCase);
         }
 
         private void DesktopSearch_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (_desktopSearch == null || string.IsNullOrWhiteSpace(_desktopSearch.Text)) return;
+            if (_desktopSearch == null) return;
+            if (string.IsNullOrWhiteSpace(_desktopSearch.Text))
+            {
+                if (_startOverlay != null && _startOverlay.Visibility == Visibility.Visible && _startSearch != null)
+                    _startSearch.Text = string.Empty;
+                return;
+            }
             ShowStart();
             if (_startSearch != null)
             {
@@ -859,10 +1012,10 @@ namespace AeroOS.Windows
                 LaunchBuiltin(app.Path);
                 return;
             }
-
             try
             {
                 Process.Start(new ProcessStartInfo(app.Path) { UseShellExecute = true });
+                RememberRecent(app);
             }
             catch (Exception ex)
             {
@@ -870,7 +1023,7 @@ namespace AeroOS.Windows
             }
         }
 
-        private void LaunchBuiltin(string key)
+        private bool LaunchBuiltin(string key)
         {
             try
             {
@@ -884,12 +1037,16 @@ namespace AeroOS.Windows
                     case "@notepad": Process.Start(new ProcessStartInfo("notepad.exe") { UseShellExecute = true }); break;
                     case "@taskmanager": Process.Start(new ProcessStartInfo("taskmgr.exe") { UseShellExecute = true }); break;
                     case "@control": Process.Start(new ProcessStartInfo("control.exe") { UseShellExecute = true }); break;
-                    default: break;
+                    default: return false;
                 }
+                var builtIn = _builtInApps.FirstOrDefault(app => string.Equals(app.Path, key, StringComparison.Ordinal));
+                if (builtIn != null) RememberRecent(builtIn);
+                return true;
             }
             catch (Exception ex)
             {
                 MessageBox.Show(this, "Windows could not open that app. It may not be available on this PC." + Environment.NewLine + ex.Message, "AeroOS", MessageBoxButton.OK, MessageBoxImage.Information);
+                return false;
             }
         }
 
@@ -936,8 +1093,11 @@ namespace AeroOS.Windows
 
         private void UpdateClock()
         {
-            if (_clockLabel != null) _clockLabel.Text = DateTime.Now.ToString("h:mm tt");
-            if (_dateLabel != null) _dateLabel.Text = DateTime.Now.ToString("ddd, dd MMM yyyy");
+            var now = DateTime.Now;
+            if (_clockLabel != null) _clockLabel.Text = now.ToString("h:mm tt");
+            if (_dateLabel != null) _dateLabel.Text = now.ToString("ddd, dd MMM yyyy");
+            if (_dashboardClockLabel != null) _dashboardClockLabel.Text = now.ToString("h:mm tt");
+            if (_dashboardDateLabel != null) _dashboardDateLabel.Text = now.ToString("dddd, dd MMMM yyyy");
         }
 
         private static string GetGreeting()
