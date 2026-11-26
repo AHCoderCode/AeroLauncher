@@ -426,7 +426,7 @@ namespace AeroOS.Windows
                 Height = 42,
                 Padding = new Thickness(13, 9, 13, 9),
                 FontSize = 12,
-                Background = BrushFrom("#331FFFFFF"),
+                Background = BrushFrom("#33FFFFFF"),
                 Foreground = TextBrush(),
                 BorderBrush = LineBrush(),
                 CaretBrush = AccentBrush(),
@@ -518,7 +518,7 @@ namespace AeroOS.Windows
             stack.Children.Add(SettingCard("Performance", "Reduced effects avoid the custom background image and keep the interface static for older graphics hardware.", performance));
 
             var wallpaperRow = new StackPanel { Orientation = Orientation.Horizontal };
-            wallpaperRow.Children.Add(MakeButton("Choose wallpaper", ChooseWallpaper_Click, false, 11, 38));
+            wallpaperRow.Children.Add(MakeButton("Choose wallpaper", delegate { ChooseWallpaper_Click(this, new RoutedEventArgs()); }, false, 11, 38));
             var clearWallpaper = MakeButton("Remove wallpaper", delegate
             {
                 _settings.WallpaperPath = string.Empty;
@@ -554,7 +554,8 @@ namespace AeroOS.Windows
             textStack.Children.Add(MakeText(description, 9, "Muted", FontWeights.Normal, new Thickness(0, 3, 12, 0)));
             grid.Children.Add(textStack);
             Grid.SetColumn(control, 1);
-            control.VerticalAlignment = VerticalAlignment.Center;
+            var frameworkControl = control as FrameworkElement;
+            if (frameworkControl != null) frameworkControl.VerticalAlignment = VerticalAlignment.Center;
             grid.Children.Add(control);
             card.Child = grid;
             return card;
@@ -723,7 +724,8 @@ namespace AeroOS.Windows
                 Foreground = brush,
                 Margin = margin ?? new Thickness(0),
                 VerticalAlignment = VerticalAlignment.Center,
-                TextTrimming = TextTrimming.CharacterEllipsis
+                TextTrimming = TextTrimming.None,
+                TextWrapping = TextWrapping.Wrap
             };
         }
 
