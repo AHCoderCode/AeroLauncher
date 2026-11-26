@@ -797,11 +797,12 @@ namespace AeroOS.Windows
                 FontWeight = FontWeights.SemiBold,
                 Cursor = Cursors.Hand,
                 FocusVisualStyle = null,
-                ToolTipService.ShowDuration = 4000
             };
 
+            ToolTipService.SetShowDuration(button, 4000);
             var template = new ControlTemplate(typeof(Button));
             var frame = new FrameworkElementFactory(typeof(Border));
+            frame.Name = "PART_ButtonFrame";
             frame.SetValue(Border.CornerRadiusProperty, new CornerRadius(primary ? 15 : 13));
             frame.SetValue(Border.SnapsToDevicePixelsProperty, true);
             frame.SetValue(Border.BackgroundProperty, new TemplateBindingExtension(Control.BackgroundProperty));
