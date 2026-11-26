@@ -1,68 +1,54 @@
 # AeroOS Windows Edition
 
-**AeroOS Windows Edition 0.1.0** is a lightweight, native WPF desktop companion for Windows 10. Windows remains the actual operating system: AeroOS runs in a normal resizable app window and does not replace Windows Explorer, the taskbar, Winlogon, the Windows shell, the bootloader or any installed driver.
+**AeroOS Windows Edition 0.2.0** is a custom, full-screen desktop launcher for Windows 10. It is a standalone Windows application project in the **AeroLauncher** repository; it is separate from the Linux Aero-Os repository and separate from any AeroShell Desktop project.
 
-> **Windows-preservation rule:** this project does not erase, format, repartition, reset, reinstall or replace Windows. It is not an OS installer or a Windows debloater.
+AeroOS gives the user a custom glass-style workspace with its own visual taskbar, Start panel, app search, quick-launch tiles, folder shortcuts, clock, quick settings links and personalization. It launches the existing Windows applications rather than replacing them.
 
-## Current implementation
+## Windows preservation comes first
 
-- Native WPF desktop window with Overview, Applications, Personalization, Control Center and About pages.
-- Discovers `.lnk` app shortcuts from the current user's and all-users' Start Menu folders.
-- Searches discovered app names/categories, launches shortcuts through the Windows shell, and stores AeroOS pins/recent launches.
-- Opens the real Windows File Explorer, Task Manager and native Settings pages.
-- Reads basic CPU, GPU, memory, Windows and system-drive information through WMI.
-- Dark/light app theme, accent selection and AeroOS-only workspace background image.
-- AeroOS-only Performance Mode that suppresses the content background image; it does not tune Windows services or global performance settings.
-- User-level installation/uninstallation scripts with marker/path checks, no administrator requirement and no startup persistence.
-- Read-only PowerShell hardware audit script.
-- GitHub Actions Windows build workflow.
+AeroOS runs as one ordinary, borderless, maximized WPF window. It does **not** replace Windows Explorer, the Windows shell, Winlogon, the native taskbar, the bootloader or any driver. It does not add login startup, services, scheduled tasks, registry shell changes, power-plan tweaks or background persistence. Closing AeroOS with its Exit button or Alt+F4 closes the app and reveals the normal Windows desktop.
 
-## Explicitly not implemented
+The project must never erase, format, repartition, reset, reinstall or replace Windows. It is not an operating-system installer or Windows debloater.
 
-This first build does **not** replace the Windows desktop or taskbar, provide system-tray integration, manage notifications, change Windows wallpaper/theme, alter Windows power plans, disable services/startup apps, install drivers, apply undocumented registry tweaks, or claim measured performance gains. Those features require separate design and physical-device tests and are intentionally not simulated.
+## 0.2.0 launcher features
 
-## Hardware context
+- Full-screen, custom AeroOS workspace with a dark, translucent glass-style visual system.
+- In-app Start panel with search for discovered Start Menu shortcuts and built-in Windows tools.
+- Quick-launch tiles for File Explorer, the default web browser, Windows Settings, Calculator, Paint and Notepad.
+- Shortcuts to the user's Home, Documents, Downloads, Pictures, Music, This PC and Recycle Bin locations.
+- Links to native Windows network, display, sound and Bluetooth settings.
+- System clock and date, plus a best-effort, one-time hardware summary.
+- AeroOS-only dark/light appearance, accent colours and optional workspace wallpaper.
+- Reduced-effects mode that disables the custom workspace wallpaper and keeps the visual surface static.
+- No account, telemetry, analytics, password capture or background network service.
 
-The existing Linux AeroOS repository README documents an HP ProBook 4520s target with an Intel Core i5-480M, 8 GB RAM, Legacy BIOS and a user-reported Radeon HD 64xx-family GPU. Those are repository-documented target details, not a live scan of the Windows installation. Run the included diagnostic report to confirm the actual hardware before making any optimization recommendations.
+## Performance design
 
-## Quick start
+The interface uses WPF and built-in .NET Framework libraries. It has no continuous animation loop. The clock refreshes once per minute. Start Menu discovery and the basic hardware summary happen once after launch. Reduced-effects mode avoids decoding and displaying the optional wallpaper.
 
-1. Build on Windows with Visual Studio 2022, the .NET desktop development workload and the .NET Framework 4.8 Developer Pack.
-2. Run `scripts\Build-Release.ps1` from a normal PowerShell window.
-3. Extract `artifacts\AeroOS-Windows-v0.1.0.zip`.
-4. Run `Install-User.ps1` without Administrator privileges.
-5. Launch AeroOS from the Start Menu.
+These are resource-conscious design choices, **not measured battery-life, RAM, CPU or FPS guarantees**. Actual impact must be tested on the target laptop.
 
-See [docs/PHASE-1-REPORT.md](docs/PHASE-1-REPORT.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/INSTALL.md](docs/INSTALL.md), [docs/SAFETY.md](docs/SAFETY.md), [docs/TEST-PLAN.md](docs/TEST-PLAN.md) and [docs/CURRENT-COMPATIBILITY.md](docs/CURRENT-COMPATIBILITY.md).
+## Compatibility and build
 
-## Build output through GitHub Actions
+- Target: Windows 10, 64-bit.
+- Framework: .NET Framework 4.8.
+- UI: native WPF; no Electron or embedded browser runtime.
+- Hardware target: HP ProBook 4520s / 8 GB RAM, with exact processor and graphics model to be confirmed on the device.
 
-After this source is pushed to `main`, the **Build AeroOS Windows Edition** workflow compiles on a Windows runner and uploads `AeroOS-Windows-v0.1.0.zip` as a 14-day workflow artifact. The workflow does not publish a public release or deploy anything.
+The GitHub Actions workflow builds the application on a Windows runner and uploads a portable ZIP artifact. The bundle contains the compiled application files and information text only. It does not package PowerShell installer or uninstaller scripts. The current application is unsigned, and a Windows build and device test are still required before it should be used as a daily desktop.
 
-## Project layout
+## Explicit limitations
 
-```text
-AeroOS-Windows/
-├── .github/workflows/build-windows.yml
-├── docs/
-├── scripts/
-│   ├── Build-Release.ps1
-│   ├── Get-AeroOSHardwareReport.ps1
-│   ├── Install-User.ps1
-│   └── Uninstall-User.ps1
-├── src/AeroOS.Windows/
-│   ├── Models/
-│   ├── Services/
-│   ├── App.xaml
-│   ├── MainWindow.xaml
-│   └── AeroOS.Windows.csproj
-└── AeroOS.sln
-```
+AeroOS does not provide a replacement operating system, system-wide shell replacement, native Windows taskbar replacement, a new kernel, a custom driver stack, its own browser engine, or a custom file-system implementation. File Explorer, browser, Settings and other system tools are the real Windows applications opened by AeroOS. Some Start Menu shortcuts and Store apps may not be discoverable as ordinary shortcut files.
 
-## Security and privacy
+## Privacy and settings
 
-No telemetry, analytics, account sign-in, password capture, or network service is included. Application preferences are stored at `%LOCALAPPDATA%\AeroOSWindows\settings.json`. Review scripts before running them. The current installer is unsigned.
+The application stores its own preferences under:
 
-## Status
+%LOCALAPPDATA%\AeroOSWindows\settings.json
 
-Initial source implementation prepared. The project has not yet been built or run on Windows in this environment. The WPF application, diagnostic script, installer and uninstaller still require validation on the HP ProBook itself. No performance benchmark is claimed.
+The optional wallpaper path is used only by the AeroOS window. It does not change Windows wallpaper. App discovery reads Start Menu shortcut names and paths locally.
+
+## Build status
+
+Source implementation for 0.2.0 has been committed. The project still needs a successful Windows CI build, review of the generated bundle, and runtime testing on the HP ProBook. No malware-free certification or measured performance result is claimed.
