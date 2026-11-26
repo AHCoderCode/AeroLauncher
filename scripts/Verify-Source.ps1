@@ -28,5 +28,33 @@ $forbiddenPatterns = @(
 foreach ($pattern in $forbiddenPatterns) {
     if ([regex]::IsMatch($diagnostic, $pattern)) { throw "Safety scan failed. Diagnostic script contains a prohibited command pattern: $pattern" }
 }
-Write-Host 'Portable source structure and read-only diagnostic static checks passed.' -ForegroundColor Green
+$appFiles = Get-ChildItem -LiteralPath (Join-Path $root 'src\AeroOS.Windows') -Recurse -File |
+    Where-Object { $_.Extension -in @('.cs', '.xaml') }
+$appSource = ($appFiles | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }) -join [Environment]::NewLine
+$appForbiddenPatterns = @(
+    '(?i)\bRegistryKey\b|Microsoft\.Win32\.Registry',
+    '(?i)\bDllImport\b|SetWindowsHookEx|CreateRemoteThread|OpenProcess',
+    '(?i)\bServiceController\b|\bNew-Service\b|\bsc\.exe\b',
+    '(?i)\bbcdedit\b|\bdiskpart\b|Format-Volume|Clear-Disk|Set-Partition|Remove-Partition',
+    '(?i)Set-MpPreference|Add-MpPreference|DisableRealtimeMonitoring|Set-MpThreat',
+    '(?i)Register-ScheduledTask|New-ScheduledTask|schtasks\.exe',
+    '(?i)Environment\.SpecialFolder\.Startup',
+    '(?i)Process\.(Kill|KillTree)\('
+)
+foreach ($pattern in $appForbiddenPatterns) {
+    if ([regex]::IsMatch($appSource, $pattern)) {
+        throw "Application source safety scan failed. Prohibited API or command pattern found: $pattern"
+    }
+}
+$legacyFiles = @(
+    'scripts\Install-User.ps1',
+    'scripts\Uninstall-User.ps1',
+    'AeroOS-Windows-source-v0.1.0.zip'
+)
+foreach ($relative in $legacyFiles) {
+    if (Test-Path -LiteralPath (Join-Path $root $relative)) {
+        throw "Legacy script-based installer or package must not be in the release source: $relative"
+    }
+}
+Write-Host 'Application source, portable package structure and read-only diagnostic static checks passed.' -ForegroundColor Green
 Write-Host 'This static check is not a malware certification or a substitute for Windows runtime testing.'
