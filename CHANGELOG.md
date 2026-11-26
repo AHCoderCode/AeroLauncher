@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 - 2026-11-26
+
+- Upgraded the visual system with layered glass gradients, translucent panels, brighter edge highlights and static ambient lighting.
+- Added rounded, consistent button and text-input templates with hover, press and focus feedback.
+- Preserved the static rendering approach: no continuous animation loops or expensive blur effects were added.
+- Kept all application behaviour and Windows-preservation boundaries unchanged.
+- Windows build and HP ProBook runtime/layout/performance verification are required.
+
 ## 0.2.0 - 2026-11-26
 
 - Rebuilt the main experience as a custom, full-screen, glass-style WPF launcher window.
