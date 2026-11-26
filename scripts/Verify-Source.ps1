@@ -4,12 +4,14 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $required = @(
     'AeroOS.sln',
+    'VERSION',
+    'README.md',
     'src\AeroOS.Windows\AeroOS.Windows.csproj',
+    'src\AeroOS.Windows\App.xaml',
     'src\AeroOS.Windows\MainWindow.xaml',
     'src\AeroOS.Windows\MainWindow.xaml.cs',
-    'scripts\Get-AeroOSHardwareReport.ps1',
-    'scripts\Install-User.ps1',
-    'scripts\Uninstall-User.ps1'
+    'scripts\Build-Release.ps1',
+    'scripts\Get-AeroOSHardwareReport.ps1'
 )
 foreach ($relative in $required) {
     $path = Join-Path $root $relative
@@ -26,5 +28,5 @@ $forbiddenPatterns = @(
 foreach ($pattern in $forbiddenPatterns) {
     if ([regex]::IsMatch($diagnostic, $pattern)) { throw "Safety scan failed. Diagnostic script contains a prohibited command pattern: $pattern" }
 }
-Write-Host 'Source structure and read-only diagnostic static checks passed.' -ForegroundColor Green
-Write-Host 'This static check is not a runtime or physical-hardware test.'
+Write-Host 'Portable source structure and read-only diagnostic static checks passed.' -ForegroundColor Green
+Write-Host 'This static check is not a malware certification or a substitute for Windows runtime testing.'
