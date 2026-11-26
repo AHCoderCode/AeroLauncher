@@ -1,6 +1,6 @@
 # AeroShell Desktop
 
-**AeroShell Desktop 0.5.0** is a Windows 12-inspired desktop launcher for Windows 10. It is a portable WPF application in the **AeroLauncher** repository. It is a visual desktop experience, not a replacement operating system.
+**AeroShell Desktop 0.6.0** is a Windows 12-inspired desktop launcher for Windows 10. It is a portable WPF application in the **AeroLauncher** repository. It is a visual desktop experience, not a replacement operating system.
 
 ## Windows preservation comes first
 
@@ -8,17 +8,29 @@ AeroShell runs as one ordinary, maximized WPF window. It does **not** replace Wi
 
 The project must never erase, format, repartition, reset, reinstall or replace Windows. It is not an operating-system installer or Windows debloater.
 
-## 0.5.0 desktop redesign
+## 0.6.0 navigation and workspace
 
-- Refreshed Windows 12-inspired desktop composition with a dark, layered colour field and restrained static ambient lighting.
-- AeroShell brand identity and clearer product labeling.
-- Refined navigation panel for Home, Documents, Downloads, Pictures, Music, This PC and Recycle Bin.
-- Redesigned application tiles and search area.
-- Centered floating taskbar-style dock with a dedicated, clearly labeled Exit control.
-- Centered Start panel with application search, pinned Windows tools, recent apps and discovered Start Menu shortcuts.
-- Redesigned personalization panel with appearance, accent, reduced-effects and AeroShell-only wallpaper options.
-- Existing Windows application launching remains intact.
-- Responsive layout collapses the optional device panel on narrower displays.
+- Persistent left sidebar with clear Home, All apps, Files & folders and Personalization destinations.
+- Sidebar quick places for Downloads, This PC and Recycle Bin.
+- Direct Windows Settings and Task Manager shortcuts.
+- Home dashboard with a quick app search, quick-launch tiles, recent applications and device information.
+- Dedicated All apps page with live search, category matching, app launch and pin/unpin controls.
+- Dedicated Files & folders page with Home, Documents, Downloads, Pictures, Music, This PC and Recycle Bin shortcuts.
+- Personalization overlay for dark/light appearance, violet/blue/teal/rose accents, reduced effects and AeroShell-only wallpaper.
+- Centered floating taskbar with Start, common app shortcuts, All apps and an explicit Exit control.
+- Clear page headings, active navigation indication, and keyboard navigation shortcuts.
+
+## Keyboard shortcuts
+
+| Shortcut | Action |
+|---|---|
+| Ctrl + 1 | Home |
+| Ctrl + 2 | All apps |
+| Ctrl + 3 | Files & folders |
+| Ctrl + Space | Open/close Start |
+| Ctrl + , | Open Personalization |
+| Esc | Close an open panel |
+| Alt + F4 | Close AeroShell and return to Windows |
 
 ## Existing launcher features
 
@@ -62,4 +74,4 @@ The optional wallpaper path is used only by the AeroShell window. It does not ch
 
 ## Validation status
 
-The 0.5.0 redesign is a source update. Its Windows build, static checks, ZIP integrity and runtime behaviour must be confirmed by the new GitHub Actions run and then tested on the target HP laptop. No claim is made that it is already tested on the device.
+Version 0.6.0 adds dedicated navigation and application/file pages. Its Windows build, static checks, ZIP integrity and runtime behaviour must be confirmed by GitHub Actions and tested on the target HP laptop. No claim is made that it is already tested on the device.
