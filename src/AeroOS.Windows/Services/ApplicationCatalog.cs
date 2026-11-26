@@ -8,42 +8,59 @@ namespace AeroOS.Windows.Services
 {
     public sealed class ApplicationCatalog
     {
+        private const int MaximumShortcuts = 1200;
+        private const int MaximumFolderDepth = 8;
+
         public List<AppEntry> Discover()
         {
             var results = new Dictionary<string, AppEntry>(StringComparer.OrdinalIgnoreCase);
+            var pending = new Stack<KeyValuePair<string, int>>();
             var folders = new[]
             {
                 Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms),
                 Environment.GetFolderPath(Environment.SpecialFolder.Programs)
             };
 
-            foreach (var folder in folders.Where(Directory.Exists))
-            {
-                IEnumerable<string> files;
-                try { files = Directory.EnumerateFiles(folder, "*.lnk", SearchOption.AllDirectories).ToArray(); }
-                catch { continue; }
+            foreach (var folder in folders.Where(path => !string.IsNullOrWhiteSpace(path) && Directory.Exists(path)))
+                pending.Push(new KeyValuePair<string, int>(folder, 0));
 
-                foreach (var file in files)
+            while (pending.Count > 0 && results.Count < MaximumShortcuts)
+            {
+                var current = pending.Pop();
+                try
                 {
-                    try
+                    foreach (var file in Directory.EnumerateFiles(current.Key, "*.lnk", SearchOption.TopDirectoryOnly))
                     {
-                        var name = Path.GetFileNameWithoutExtension(file);
-                        if (string.IsNullOrWhiteSpace(name) || IsNoise(name)) continue;
-                        if (!results.ContainsKey(name))
+                        try
                         {
-                            results.Add(name, new AppEntry
-                            {
-                                Name = name,
-                                Path = file,
-                                Category = GuessCategory(file)
-                            });
+                            var name = Path.GetFileNameWithoutExtension(file);
+                            if (string.IsNullOrWhiteSpace(name) || IsNoise(name)) continue;
+                            if (!results.ContainsKey(name))
+                                results.Add(name, new AppEntry { Name = name, Path = file, Category = GuessCategory(file) });
+                            if (results.Count >= MaximumShortcuts) break;
                         }
+                        catch { }
                     }
-                    catch { }
                 }
+                catch { }
+
+                if (current.Value >= MaximumFolderDepth) continue;
+                try
+                {
+                    foreach (var child in Directory.EnumerateDirectories(current.Key, "*", SearchOption.TopDirectoryOnly))
+                    {
+                        try
+                        {
+                            if ((File.GetAttributes(child) & FileAttributes.ReparsePoint) != 0) continue;
+                            pending.Push(new KeyValuePair<string, int>(child, current.Value + 1));
+                        }
+                        catch { }
+                    }
+                }
+                catch { }
             }
 
-            return results.Values.OrderBy(x => x.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+            return results.Values.OrderBy(app => app.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
         }
 
         private static bool IsNoise(string name)
