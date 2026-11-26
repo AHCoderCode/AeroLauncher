@@ -8,7 +8,7 @@ $artifactRoot = Join-Path $root 'artifacts'
 $publish = Join-Path $artifactRoot 'portable'
 $version = (Get-Content -LiteralPath (Join-Path $root 'VERSION') -Raw).Trim()
 if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "Invalid VERSION value: $version" }
-$bundleName = "AeroOS-Windows-v$version"
+$bundleName = "AeroShell-Windows-v$version"
 $zipPath = Join-Path $artifactRoot ($bundleName + '.zip')
 $hashPath = $zipPath + '.sha256'
 
@@ -33,19 +33,20 @@ New-Item -ItemType Directory -Path $publish | Out-Null
 Get-ChildItem -LiteralPath $projectOutput -File | Where-Object { $_.Extension -ne '.pdb' } | ForEach-Object {
     Copy-Item -LiteralPath $_.FullName -Destination $publish
 }
-Copy-Item -LiteralPath (Join-Path $root 'README.md') -Destination (Join-Path $publish 'README-AeroOS.txt')
+Copy-Item -LiteralPath (Join-Path $root 'README.md') -Destination (Join-Path $publish 'README-AeroShell.txt')
 $notes = @'
-AeroOS Windows Edition is a portable desktop launcher window.
-Extract this folder and run AeroOS.Windows.exe.
+AeroShell Desktop is a portable Windows 12-inspired desktop launcher.
+Application filename: AeroOS.Windows.exe.
+Extract the folder and run AeroOS.Windows.exe only after reviewing and scanning the package.
 There is no installer, service, scheduled task, automatic startup entry, shell replacement or boot modification.
-Close AeroOS with the Exit AeroOS button or Alt+F4 to return to the normal Windows desktop.
-AeroOS launches existing Windows applications; it does not install or modify them.
-The app is unsigned. Review the source and scan the downloaded bundle before running it.
+Close AeroShell with the Exit button or Alt+F4 to return to the normal Windows desktop.
+AeroShell launches existing Windows applications; it does not install or modify them.
+The application is unsigned. Do not bypass Microsoft Defender or SmartScreen warnings.
 '@
-Set-Content -LiteralPath (Join-Path $publish 'AEROOS-INFO.txt') -Value $notes -Encoding UTF8
+Set-Content -LiteralPath (Join-Path $publish 'AEROSHELL-INFO.txt') -Value $notes -Encoding UTF8
 Compress-Archive -Path (Join-Path $publish '*') -DestinationPath $zipPath -CompressionLevel Optimal
 $hash = (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash.ToLowerInvariant()
 Set-Content -LiteralPath $hashPath -Value ($hash + '  ' + [IO.Path]::GetFileName($zipPath)) -Encoding ASCII
-Write-Host "Portable AeroOS bundle created: $zipPath" -ForegroundColor Green
+Write-Host "Portable AeroShell bundle created: $zipPath" -ForegroundColor Green
 Write-Host "SHA-256: $hash"
-Write-Host 'The bundle contains the application only; no installer or uninstall scripts are packaged.'
+Write-Host 'The bundle contains the application only; no installer or uninstaller scripts are packaged.'
