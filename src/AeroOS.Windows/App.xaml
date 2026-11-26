@@ -3,15 +3,11 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-        <Style TargetType="Button">
+        <Style TargetType="{x:Type Button}">
             <Setter Property="FontFamily" Value="Segoe UI" />
             <Setter Property="FontSize" Value="13" />
-            <Setter Property="Padding" Value="14,9" />
             <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Background" Value="{DynamicResource CardBrush}" />
-            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         </Style>
     </Application.Resources>
 </Application>
