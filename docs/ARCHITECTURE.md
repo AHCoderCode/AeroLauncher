@@ -20,6 +20,14 @@ The user manually launches the executable. The single maximized window is displa
 
 No Electron runtime, remote web content, always-on background service, continuous animation loop, or recurring hardware polling is included. The optional wallpaper is decoded at a bounded width and is skipped in Reduced Effects mode.
 
+## 0.4.0 interaction model
+
+- User pins and recent-app history are stored in the AeroOS preference JSON only.
+- Start search covers the built-in catalog plus discovered Start Menu shortcuts, ranks prefix matches first and supports Enter-to-launch.
+- Ctrl+Space opens/closes Start, Ctrl+Comma opens Personalize, and Escape closes the topmost overlay.
+- The desktop collapses the optional right-hand information column on narrower layouts.
+- Start Menu discovery is bounded by folder depth and result count and skips reparse-point directories.
+
 ## Limitations
 
 The interface is a launcher shell inside an application window. It does not own Windows logon, the native desktop, the native taskbar or operating-system services. Windows Explorer and the actual Windows tools handle file browsing and system settings.
