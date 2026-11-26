@@ -9,6 +9,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
 using System.Windows.Threading;
 using AeroOS.Windows.Models;
 using AeroOS.Windows.Services;
@@ -111,8 +112,14 @@ namespace AeroOS.Windows
         private void BuildShell()
         {
             ShellRoot.Children.Clear();
-            ShellRoot.Background = new LinearGradientBrush(
-                ColorFrom("#10172C"), ColorFrom("#211B3D"), 35);
+            var backdropStops = new GradientStopCollection
+            {
+                new GradientStop(ColorFrom("#FF080E1C"), 0.00),
+                new GradientStop(ColorFrom("#FF101A32"), 0.38),
+                new GradientStop(ColorFrom("#FF171A38"), 0.72),
+                new GradientStop(ColorFrom("#FF0A1729"), 1.00)
+            };
+            ShellRoot.Background = new LinearGradientBrush(backdropStops, new Point(0, 0), new Point(1, 1));
 
             if (!_settings.PerformanceMode && !string.IsNullOrWhiteSpace(_settings.WallpaperPath) && File.Exists(_settings.WallpaperPath))
             {
@@ -135,6 +142,11 @@ namespace AeroOS.Windows
                 }
                 catch { }
             }
+
+            // Static ambient light gives the glass surfaces depth without continuous animation or blur effects.
+            AddAmbientGlow(720, 650, "#735CFF", 0.34, HorizontalAlignment.Left, VerticalAlignment.Top, new Thickness(-240, -250, 0, 0));
+            AddAmbientGlow(700, 640, "#22B8D6", 0.25, HorizontalAlignment.Right, VerticalAlignment.Bottom, new Thickness(0, 0, -245, -250));
+            AddAmbientGlow(460, 460, "#CB6DFF", 0.16, HorizontalAlignment.Right, VerticalAlignment.Top, new Thickness(0, -220, -175, 0));
 
             var layout = new Grid { Margin = new Thickness(26, 18, 26, 18) };
             layout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(66) });
@@ -681,10 +693,11 @@ namespace AeroOS.Windows
             return new Border
             {
                 Background = GlassBrush(),
-                BorderBrush = LineBrush(),
+                BorderBrush = GlassEdgeBrush(),
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(radius),
-                Padding = padding
+                Padding = padding,
+                SnapsToDevicePixels = true
             };
         }
 
@@ -697,9 +710,9 @@ namespace AeroOS.Windows
                 MinWidth = double.IsNaN(width) ? 0 : width,
                 Padding = new Thickness(14, 5, 14, 5),
                 Margin = new Thickness(4, 0, 4, 0),
-                Background = primary ? AccentBrush() : GlassBrush(),
+                Background = primary ? AccentFillBrush() : GlassBrush(),
                 Foreground = primary ? Brushes.White : TextBrush(),
-                BorderBrush = primary ? AccentBrush() : LineBrush(),
+                BorderBrush = primary ? AccentEdgeBrush() : GlassEdgeBrush(),
                 BorderThickness = new Thickness(1),
                 FontSize = fontSize,
                 FontWeight = FontWeights.SemiBold,
@@ -953,12 +966,112 @@ namespace AeroOS.Windows
 
         private Brush LineBrush()
         {
-            return _settings.Theme == "Light" ? BrushFrom("#99FFFFFF") : BrushFrom("#44FFFFFF");
+            return _settings.Theme == "Light" ? BrushFrom("#667C8DA6") : BrushFrom("#3FFFFFFF");
         }
 
         private Brush GlassBrush()
         {
-            return _settings.Theme == "Light" ? BrushFrom("#DDF7FAFF") : BrushFrom("#C817213A");
+            var stops = new GradientStopCollection();
+            if (_settings.Theme == "Light")
+            {
+                stops.Add(new GradientStop(ColorFrom("#F4FFFFFF"), 0.00));
+                stops.Add(new GradientStop(ColorFrom("#E4EAF5FF"), 0.42));
+                stops.Add(new GradientStop(ColorFrom("#D6FFFFFF"), 1.00));
+            }
+            else
+            {
+                stops.Add(new GradientStop(ColorFrom("#D8384A6B"), 0.00));
+                stops.Add(new GradientStop(ColorFrom("#C51D2B49"), 0.48));
+                stops.Add(new GradientStop(ColorFrom("#B8142038"), 1.00));
+            }
+
+            var brush = new LinearGradientBrush(stops, new Point(0, 0), new Point(1, 1));
+            brush.Freeze();
+            return brush;
+        }
+
+        private Brush GlassEdgeBrush()
+        {
+            var stops = new GradientStopCollection
+            {
+                new GradientStop(ColorFrom(_settings.Theme == "Light" ? "#E6FFFFFF" : "#B6FFFFFF"), 0.00),
+                new GradientStop(ColorFrom(_settings.Theme == "Light" ? "#829BAFC8" : "#5A90A6D0"), 0.48),
+                new GradientStop(ColorFrom(_settings.Theme == "Light" ? "#A4FFFFFF" : "#624B5FC5"), 1.00)
+            };
+            var brush = new LinearGradientBrush(stops, new Point(0, 0), new Point(1, 1));
+            brush.Freeze();
+            return brush;
+        }
+
+        private Brush AccentFillBrush()
+        {
+            var baseColor = ColorFrom(_settings.AccentColor);
+            var stops = new GradientStopCollection
+            {
+                new GradientStop(AdjustColor(baseColor, 0.18), 0.00),
+                new GradientStop(baseColor, 0.48),
+                new GradientStop(AdjustColor(baseColor, -0.16), 1.00)
+            };
+            var brush = new LinearGradientBrush(stops, new Point(0, 0), new Point(1, 1));
+            brush.Freeze();
+            return brush;
+        }
+
+        private Brush AccentEdgeBrush()
+        {
+            var baseColor = ColorFrom(_settings.AccentColor);
+            var stops = new GradientStopCollection
+            {
+                new GradientStop(AdjustColor(baseColor, 0.34), 0.00),
+                new GradientStop(AdjustColor(baseColor, -0.04), 1.00)
+            };
+            var brush = new LinearGradientBrush(stops, new Point(0, 0), new Point(1, 1));
+            brush.Freeze();
+            return brush;
+        }
+
+        private void AddAmbientGlow(double width, double height, string colorHex, double opacity,
+            HorizontalAlignment horizontal, VerticalAlignment vertical, Thickness margin)
+        {
+            var tint = ColorFrom(colorHex);
+            var glowStops = new GradientStopCollection
+            {
+                new GradientStop(Color.FromArgb(0x8A, tint.R, tint.G, tint.B), 0.00),
+                new GradientStop(Color.FromArgb(0x35, tint.R, tint.G, tint.B), 0.48),
+                new GradientStop(Color.FromArgb(0x00, tint.R, tint.G, tint.B), 1.00)
+            };
+            var radial = new RadialGradientBrush(glowStops)
+            {
+                Center = new Point(0.5, 0.5),
+                GradientOrigin = new Point(0.42, 0.38),
+                RadiusX = 0.5,
+                RadiusY = 0.5
+            };
+            radial.Freeze();
+
+            ShellRoot.Children.Add(new Ellipse
+            {
+                Width = width,
+                Height = height,
+                Fill = radial,
+                Opacity = opacity,
+                HorizontalAlignment = horizontal,
+                VerticalAlignment = vertical,
+                Margin = margin,
+                IsHitTestVisible = false,
+                SnapsToDevicePixels = true
+            });
+        }
+
+        private static Color AdjustColor(Color color, double amount)
+        {
+            byte Adjust(byte channel)
+            {
+                var value = channel + (amount * 255.0);
+                return (byte)Math.Max(0, Math.Min(255, value));
+            }
+
+            return Color.FromArgb(color.A, Adjust(color.R), Adjust(color.G), Adjust(color.B));
         }
 
         private static Brush BrushFrom(string color)
