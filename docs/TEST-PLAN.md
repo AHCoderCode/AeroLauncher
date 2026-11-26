@@ -1,24 +1,25 @@
-# Test plan and current verification state
+# AeroOS Windows Edition test plan
 
-This is the initial implementation baseline. No test is marked as passed until it has actually been executed in the corresponding environment.
+## Static/source checks
+- Verify the WPF project and all XAML/code-behind files are included in the solution.
+- Verify the release packaging excludes installer/uninstaller scripts.
+- Verify there are no boot, shell, Defender, service, scheduled-task or global power-plan changes.
+- Verify preferences are written only to the AeroOS LocalAppData directory.
 
-| Area | Test | Status |
-|---|---|---|
-| Build | Build `AeroOS.sln` in Release on Windows with .NET Framework 4.8 targeting pack | Not run in this Linux build workspace |
-| Launch | Start `AeroOS.Windows.exe` on Windows 10 Pro x64 | Requires physical Windows test |
-| Discovery | Enumerate user and common Start Menu shortcuts | Requires physical Windows test |
-| Launching | Launch a harmless installed shortcut via ShellExecute | Requires physical Windows test |
-| Search | Filter application names and categories | Code path implemented; runtime test pending |
-| Preferences | Save/reload theme, accent, pins and history | Code path implemented; runtime test pending |
-| Wallpaper | Display image inside AeroOS only; confirm Windows wallpaper unchanged | Requires physical Windows test |
-| Control Center | Open supported Windows Settings URIs and fallback pages | Requires Windows-build-specific test |
-| Diagnostics | Run read-only report in non-elevated Windows PowerShell 5.1 | Requires physical Windows test |
-| Install | Copy app to current user's LocalAppData and create shortcuts | Requires physical Windows test |
-| Uninstall | Remove only marked app folder and named shortcuts | Requires physical Windows test |
-| Recovery | Confirm Explorer/taskbar remain functional after close/uninstall | Requires physical Windows test |
-| Security | Confirm no startup persistence, services, drivers or boot changes | Static source review plus Windows test |
-| Performance | Measure app idle working set and CPU on target laptop | Not measured; do not infer |
+## Windows build checks
+- Build Release configuration using MSBuild on a Windows runner.
+- Confirm the executable exists and that the portable ZIP and SHA-256 file are generated.
+- Confirm the ZIP contains application files and plain-text notes only.
 
-## Hardware performance baseline to collect
+## Runtime checks on a test Windows 10 device
+- Launch the app manually; confirm the full-screen window displays and Alt+F4/Exit closes it.
+- Confirm Windows Explorer and the native taskbar/desktop are unchanged after exit.
+- Test Start Menu discovery/search and each built-in app link.
+- Test all folder shortcuts and native Settings links.
+- Test theme, accent colour, wallpaper and Reduced Effects preferences persist correctly.
+- Confirm app discovery and WMI run once, and the clock timer refreshes once per minute.
+- Measure idle CPU/RAM and battery discharge with AeroOS closed and open, in both visual modes.
+- Inspect Windows Security scan results and application behaviour before daily use.
 
-Before launching AeroOS, record Task Manager idle CPU, memory in use, disk activity, startup time, and launch times for File Explorer and the user's normal browser. Repeat after AeroOS is installed and idle. Use the same power mode and similar startup conditions. Report measured values and test conditions; do not attribute unrelated variation to AeroOS.
+## Status
+The above runtime and physical-device checks have not been completed in this environment.
