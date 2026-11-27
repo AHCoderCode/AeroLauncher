@@ -54,7 +54,7 @@ The centered taskbar provides Start, Desktop, File Explorer, Browser, All apps, 
 - Intended hardware class includes older laptops with integrated or entry-level graphics and 8 GB RAM.
 - Effects are layered gradients, shadows and brief hover animations. There is no continuous animation loop or permanent live-blur pipeline.
 
-The richer visual effects may use more graphics resources than the previous low-effects layout. Reduced Effects remains available in Personalization for older graphics hardware. Actual CPU, RAM, battery and GPU usage must be measured on the target HP ProBook 4520s; no performance guarantee or target-laptop runtime test is claimed.
+Full visual effects are enabled by default, including when upgrading an older profile whose previous default was Reduced Effects. Reduced Effects remains available in Personalization for older graphics hardware. The one-time migration only updates AeroShell's own preference; a new Reduced Effects choice is saved normally. The richer look may use more graphics resources than the previous low-effects layout. Actual CPU, RAM, battery and GPU usage must be measured on the target HP ProBook 4520s; no performance guarantee or target-laptop runtime test is claimed.
 
 ## Security and limitations
 
