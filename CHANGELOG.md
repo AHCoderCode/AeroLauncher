@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.7.0 - 2026-11-27
+
+- Reworked the Home destination into a desktop-style shortcut surface with one-click shortcuts for common Windows apps, folders, This PC and Recycle Bin.
+- Added a dedicated Personalization navigation page instead of opening settings as a blocking overlay.
+- Added Desktop, Apps, Files and Personalization navigation to the centered taskbar.
+- Restored normal Windows minimize, maximize/restore, resize and close controls while keeping AeroShell maximized on launch.
+- Fixed the duplicate clock-label assignment so the visible workspace clock refreshes correctly.
+- Removed the unused one-time WMI hardware poll from startup to avoid unnecessary work on older laptops.
+- Kept wallpaper, theme and preferences local to AeroShell and preserved the no-installer/no-shell-takeover/no-boot-change safety contract.
+- Updated the portable package instructions and release artifact name to 0.7.0.
+- Build and static checks are automated; real laptop UI, scaling and performance checks remain pending.
+
+
 ## 0.4.0 - 2026-11-26
 
 - Added persistent custom app pinning (up to 12 entries) and an eight-entry recent-app history.
