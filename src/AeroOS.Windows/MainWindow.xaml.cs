@@ -58,7 +58,7 @@ namespace AeroOS.Windows
             _clockTimer.Start();
         }
 
-        private async void private async void Window_Loaded(object sender, RoutedEventArgs e)
+        private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
             // Discover Start Menu shortcuts in the background so the desktop appears immediately.
             _isLoadingApps = true;
@@ -146,7 +146,7 @@ namespace AeroOS.Windows
         }
 
 
-        private void private void BuildShell()
+        private void BuildShell()
         {
             ShellRoot.Children.Clear();
 
@@ -203,7 +203,7 @@ namespace AeroOS.Windows
             UpdateClock();
         }
 
-        private void private void BuildHeader(Grid layout)
+        private void BuildHeader(Grid layout)
         {
             var header = GlassCard(new Thickness(16, 7, 16, 7), 18);
             Grid.SetRow(header, 0);
@@ -367,7 +367,7 @@ namespace AeroOS.Windows
             NavigateTo("Home");
         }
 
-        private Button private Button NavigationButton(string page, string glyph, string label)
+        private Button NavigationButton(string page, string glyph, string label)
         {
             var button = MakeButton(glyph + "    " + label, delegate { NavigateTo(page); }, false, 10, 40);
             button.HorizontalContentAlignment = HorizontalAlignment.Left;
@@ -389,7 +389,7 @@ namespace AeroOS.Windows
             }
         }
 
-        private void private void NavigateTo(string page)
+        private void NavigateTo(string page)
         {
             if (_pageHost == null) return;
             _currentPage = page ?? "Home";
@@ -427,7 +427,7 @@ namespace AeroOS.Windows
             RefreshNavigationStyles();
         }
 
-        private UIElement private UIElement BuildHomePage()
+        private UIElement BuildHomePage()
         {
             var stack = new StackPanel { Margin = new Thickness(2, 1, 2, 1) };
             stack.Children.Add(MakeText("DESKTOP SHORTCUTS", 9, "Muted", FontWeights.Bold, new Thickness(4, 2, 0, 8)));
@@ -694,7 +694,7 @@ namespace AeroOS.Windows
             };
         }
 
-        private void private void BuildTaskbar(Grid layout)
+        private void BuildTaskbar(Grid layout)
         {
             var taskbar = GlassCard(new Thickness(11, 8, 11, 8), 22);
             taskbar.Width = Math.Max(600, Math.Min(790, SystemParameters.WorkArea.Width - 40));
@@ -1321,7 +1321,7 @@ namespace AeroOS.Windows
             if (_startSearch != null) _startSearch.Focus();
         }
 
-        private void private void ShowSettings()
+        private void ShowSettings()
         {
             NavigateTo("Settings");
         }
@@ -1449,7 +1449,7 @@ namespace AeroOS.Windows
             }
         }
 
-        private void private void UpdateClock()
+        private void UpdateClock()
         {
             var now = DateTime.Now;
             if (_clockLabel != null) _clockLabel.Text = now.ToString("h:mm tt");
