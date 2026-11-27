@@ -44,9 +44,9 @@ jobs:
       - name: Upload portable AeroShell app
         uses: actions/upload-artifact@v4
         with:
-          name: AeroShell-Windows-v0.6.0
+          name: AeroShell-Windows-v0.7.0
           path: |
-            artifacts/AeroShell-Windows-v0.6.0.zip
-            artifacts/AeroShell-Windows-v0.6.0.zip.sha256
+            artifacts/AeroShell-Windows-v0.7.0.zip
+            artifacts/AeroShell-Windows-v0.7.0.zip.sha256
           if-no-files-found: error
           retention-days: 14
