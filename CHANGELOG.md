@@ -11,6 +11,7 @@
 - Fixed the Start panel mouse-down interception that could interfere with clicking its search field.
 - Reworked the TextBox template so padding is applied by the outer border rather than shrinking the text viewport; search fields remain single-line and caret-visible.
 - Kept all navigation destinations available through the taskbar and Start panel.
+- Enabled the richer visual treatment by default and migrated older default settings once, while preserving the user's ability to choose and save Reduced Effects.
 - Preserved the portable app model and the no-installer/no-shell-takeover/no-boot-change safety contract.
 - Updated the release version to 0.8.0. Build and static checks are automated; target-laptop UI, scaling and performance checks remain pending.
 
