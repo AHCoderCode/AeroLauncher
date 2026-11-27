@@ -19,7 +19,7 @@ namespace AeroOS.Windows.Models
             {
                 Theme = "Dark",
                 AccentColor = "#8B7CF6",
-                PerformanceMode = true,
+                PerformanceMode = false,
                 WallpaperPath = string.Empty,
                 PinnedPaths = new List<string>(),
                 RecentPaths = new List<string>()
