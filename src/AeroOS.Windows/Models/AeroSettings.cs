@@ -9,6 +9,7 @@ namespace AeroOS.Windows.Models
         [DataMember] public string Theme { get; set; }
         [DataMember] public string AccentColor { get; set; }
         [DataMember] public bool PerformanceMode { get; set; }
+        [DataMember] public bool PerformanceModeConfigured { get; set; }
         [DataMember] public string WallpaperPath { get; set; }
         [DataMember] public List<string> PinnedPaths { get; set; }
         [DataMember] public List<string> RecentPaths { get; set; }
@@ -20,6 +21,7 @@ namespace AeroOS.Windows.Models
                 Theme = "Dark",
                 AccentColor = "#8B7CF6",
                 PerformanceMode = false,
+                PerformanceModeConfigured = true,
                 WallpaperPath = string.Empty,
                 PinnedPaths = new List<string>(),
                 RecentPaths = new List<string>()
@@ -30,6 +32,12 @@ namespace AeroOS.Windows.Models
         {
             if (string.IsNullOrWhiteSpace(Theme)) Theme = "Dark";
             if (string.IsNullOrWhiteSpace(AccentColor)) AccentColor = "#8B7CF6";
+            // 0.7.0 defaulted to reduced effects. Upgrade old profiles to the richer 0.8.0 look once.
+            if (!PerformanceModeConfigured)
+            {
+                PerformanceMode = false;
+                PerformanceModeConfigured = true;
+            }
             if (PinnedPaths == null) PinnedPaths = new List<string>();
             if (RecentPaths == null) RecentPaths = new List<string>();
             if (WallpaperPath == null) WallpaperPath = string.Empty;
