@@ -184,10 +184,13 @@ namespace AeroOS.Windows
             }
 
             // Static translucent layers keep the glass effect light on older integrated graphics.
-            AddAmbientGlow(900, 760, "#765BFF", 0.34, HorizontalAlignment.Left, VerticalAlignment.Top, new Thickness(-310, -335, 0, 0));
-            AddAmbientGlow(850, 760, "#20C4D8", 0.24, HorizontalAlignment.Right, VerticalAlignment.Bottom, new Thickness(0, 0, -320, -340));
-            AddAmbientGlow(620, 620, "#A56BFF", 0.19, HorizontalAlignment.Right, VerticalAlignment.Top, new Thickness(0, -260, -185, 0));
-            AddAmbientGlow(560, 560, "#257CFF", 0.12, HorizontalAlignment.Left, VerticalAlignment.Bottom, new Thickness(-180, 0, 0, -270));
+            if (!_settings.PerformanceMode)
+            {
+                AddAmbientGlow(900, 760, "#765BFF", 0.34, HorizontalAlignment.Left, VerticalAlignment.Top, new Thickness(-310, -335, 0, 0));
+                AddAmbientGlow(850, 760, "#20C4D8", 0.24, HorizontalAlignment.Right, VerticalAlignment.Bottom, new Thickness(0, 0, -320, -340));
+                AddAmbientGlow(620, 620, "#A56BFF", 0.19, HorizontalAlignment.Right, VerticalAlignment.Top, new Thickness(0, -260, -185, 0));
+                AddAmbientGlow(560, 560, "#257CFF", 0.12, HorizontalAlignment.Left, VerticalAlignment.Bottom, new Thickness(-180, 0, 0, -270));
+            }
 
             var layout = new Grid { Margin = new Thickness(20, 12, 20, 12) };
             layout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(58) });
@@ -295,7 +298,7 @@ namespace AeroOS.Windows
             pageCard.Background = BrushFrom(_settings.Theme == "Light" ? "#38FFFFFF" : "#1DFFFFFF");
             pageCard.BorderBrush = BrushFrom(_settings.Theme == "Light" ? "#7FFFFFFF" : "#50FFFFFF");
             pageCard.Margin = new Thickness(0, 0, 0, 2);
-            pageCard.Effect = new DropShadowEffect
+            pageCard.Effect = _settings.PerformanceMode ? null : new DropShadowEffect
             {
                 Color = Color.FromRgb(0, 0, 0),
                 BlurRadius = 28,
@@ -377,7 +380,7 @@ namespace AeroOS.Windows
             hero.Margin = new Thickness(2, 0, 2, 20);
             hero.Background = BrushFrom(_settings.Theme == "Light" ? "#68FFFFFF" : "#392D4775");
             hero.BorderBrush = BrushFrom("#68FFFFFF");
-            hero.Effect = new DropShadowEffect
+            hero.Effect = _settings.PerformanceMode ? null : new DropShadowEffect
             {
                 Color = ColorFrom(_settings.AccentColor),
                 BlurRadius = 24,
@@ -472,7 +475,7 @@ namespace AeroOS.Windows
                 Background = AccentFillBrush(),
                 BorderBrush = BrushFrom("#70FFFFFF"),
                 BorderThickness = new Thickness(1),
-                Effect = new DropShadowEffect
+                Effect = _settings.PerformanceMode ? null : new DropShadowEffect
                 {
                     Color = ColorFrom(_settings.AccentColor),
                     BlurRadius = 12,
@@ -526,7 +529,7 @@ namespace AeroOS.Windows
                 BuildShell();
                 NavigateTo("Settings");
             }, false, 10, 38);
-            stack.Children.Add(SettingCard("Performance", "Reduced effects avoids loading the optional wallpaper and is recommended for older graphics hardware.", performance));
+            stack.Children.Add(SettingCard("Performance", "Reduced Effects also disables large shadows and animated dock glow, and skips the optional wallpaper for older graphics hardware.", performance));
 
             var wallpaperRow = new StackPanel { Orientation = Orientation.Horizontal };
             wallpaperRow.Children.Add(MakeButton("Choose wallpaper", delegate { ChooseWallpaper_Click(this, new RoutedEventArgs()); }, false, 10, 38));
@@ -701,7 +704,7 @@ namespace AeroOS.Windows
             taskbar.Margin = new Thickness(0, 0, 0, 3);
             taskbar.Background = BrushFrom(_settings.Theme == "Light" ? "#DDF6FAFF" : "#D51A2943");
             taskbar.BorderBrush = BrushFrom("#9AFFFFFF");
-            taskbar.Effect = new DropShadowEffect
+            taskbar.Effect = _settings.PerformanceMode ? null : new DropShadowEffect
             {
                 Color = Color.FromRgb(0, 0, 0),
                 BlurRadius = 30,
@@ -786,7 +789,7 @@ namespace AeroOS.Windows
             card.Margin = new Thickness(0, 0, 0, 84);
             card.Background = BrushFrom(_settings.Theme == "Light" ? "#F2F8FCFF" : "#E51B2A45");
             card.BorderBrush = BrushFrom("#B5FFFFFF");
-            card.Effect = new DropShadowEffect
+            card.Effect = _settings.PerformanceMode ? null : new DropShadowEffect
             {
                 Color = ColorFrom(_settings.AccentColor),
                 BlurRadius = 38,
@@ -1135,31 +1138,34 @@ namespace AeroOS.Windows
             };
             ToolTipService.SetInitialShowDelay(button, 420);
             ToolTipService.SetShowDuration(button, 2600);
-            var scale = new ScaleTransform(1.0, 1.0);
-            button.RenderTransform = scale;
-            button.RenderTransformOrigin = new Point(0.5, 0.5);
-            var glow = new DropShadowEffect
+            if (!_settings.PerformanceMode)
             {
-                Color = ColorFrom(_settings.AccentColor),
-                BlurRadius = 0,
-                ShadowDepth = 0,
-                Opacity = 0
-            };
-            button.Effect = glow;
-            button.MouseEnter += delegate
-            {
-                scale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1.12, TimeSpan.FromMilliseconds(135)));
-                scale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1.12, TimeSpan.FromMilliseconds(135)));
-                glow.BeginAnimation(DropShadowEffect.BlurRadiusProperty, new DoubleAnimation(17, TimeSpan.FromMilliseconds(150)));
-                glow.BeginAnimation(DropShadowEffect.OpacityProperty, new DoubleAnimation(0.48, TimeSpan.FromMilliseconds(150)));
-            };
-            button.MouseLeave += delegate
-            {
-                scale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(145)));
-                scale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(145)));
-                glow.BeginAnimation(DropShadowEffect.BlurRadiusProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(145)));
-                glow.BeginAnimation(DropShadowEffect.OpacityProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(145)));
-            };
+                var scale = new ScaleTransform(1.0, 1.0);
+                button.RenderTransform = scale;
+                button.RenderTransformOrigin = new Point(0.5, 0.5);
+                var glow = new DropShadowEffect
+                {
+                    Color = ColorFrom(_settings.AccentColor),
+                    BlurRadius = 0,
+                    ShadowDepth = 0,
+                    Opacity = 0
+                };
+                button.Effect = glow;
+                button.MouseEnter += delegate
+                {
+                    scale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1.12, TimeSpan.FromMilliseconds(135)));
+                    scale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1.12, TimeSpan.FromMilliseconds(135)));
+                    glow.BeginAnimation(DropShadowEffect.BlurRadiusProperty, new DoubleAnimation(17, TimeSpan.FromMilliseconds(150)));
+                    glow.BeginAnimation(DropShadowEffect.OpacityProperty, new DoubleAnimation(0.48, TimeSpan.FromMilliseconds(150)));
+                };
+                button.MouseLeave += delegate
+                {
+                    scale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(145)));
+                    scale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(145)));
+                    glow.BeginAnimation(DropShadowEffect.BlurRadiusProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(145)));
+                    glow.BeginAnimation(DropShadowEffect.OpacityProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(145)));
+                };
+            }
             return button;
         }
 
