@@ -35,11 +35,11 @@ Get-ChildItem -LiteralPath $projectOutput -File | Where-Object { $_.Extension -n
 }
 Copy-Item -LiteralPath (Join-Path $root 'README.md') -Destination (Join-Path $publish 'README-AeroShell.txt')
 $notes = @'
-AeroShell Desktop 0.7.0 is a portable Windows 12-inspired desktop companion.
+AeroShell Desktop 0.8.0 is a portable Windows 11-inspired desktop companion.
 Application filename: AeroOS.Windows.exe.
 Extract the folder and run AeroOS.Windows.exe only after reviewing and scanning the package.
 There is no installer, service, scheduled task, automatic startup entry, shell replacement or boot modification.
-Navigate with Desktop, All apps, Files & folders and Personalization in the left sidebar or centered taskbar.
+Navigate with Desktop, All apps, Files & folders and Personalization from the centered taskbar or Start panel.
 Keyboard shortcuts: Ctrl+1 Desktop, Ctrl+2 Apps, Ctrl+3 Files, Ctrl+4 Personalization, Ctrl+Space Start, Ctrl+, Personalization, Esc closes Start.
 AeroShell starts maximized with standard Windows minimize, maximize, resize and close controls. Use the Exit button or Alt+F4 to return to Windows.
 AeroShell launches existing Windows applications; it does not install or modify them.

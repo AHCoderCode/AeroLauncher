@@ -8,6 +8,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using AeroOS.Windows.Models;
@@ -152,10 +154,10 @@ namespace AeroOS.Windows
 
             var backdropStops = new GradientStopCollection
             {
-                new GradientStop(ColorFrom("#FF07101F"), 0.00),
-                new GradientStop(ColorFrom("#FF101D35"), 0.42),
-                new GradientStop(ColorFrom("#FF171B3A"), 0.75),
-                new GradientStop(ColorFrom("#FF071728"), 1.00)
+                new GradientStop(ColorFrom("#FF050A17"), 0.00),
+                new GradientStop(ColorFrom("#FF101B34"), 0.36),
+                new GradientStop(ColorFrom("#FF24204B"), 0.72),
+                new GradientStop(ColorFrom("#FF071B2A"), 1.00)
             };
             ShellRoot.Background = new LinearGradientBrush(backdropStops, new Point(0, 0), new Point(1, 1));
 
@@ -182,9 +184,13 @@ namespace AeroOS.Windows
             }
 
             // Static translucent layers keep the glass effect light on older integrated graphics.
-            AddAmbientGlow(760, 680, "#765BFF", 0.28, HorizontalAlignment.Left, VerticalAlignment.Top, new Thickness(-260, -290, 0, 0));
-            AddAmbientGlow(760, 690, "#20C4D8", 0.20, HorizontalAlignment.Right, VerticalAlignment.Bottom, new Thickness(0, 0, -285, -300));
-            AddAmbientGlow(470, 470, "#A56BFF", 0.13, HorizontalAlignment.Right, VerticalAlignment.Top, new Thickness(0, -230, -170, 0));
+            if (!_settings.PerformanceMode)
+            {
+                AddAmbientGlow(900, 760, "#765BFF", 0.34, HorizontalAlignment.Left, VerticalAlignment.Top, new Thickness(-310, -335, 0, 0));
+                AddAmbientGlow(850, 760, "#20C4D8", 0.24, HorizontalAlignment.Right, VerticalAlignment.Bottom, new Thickness(0, 0, -320, -340));
+                AddAmbientGlow(620, 620, "#A56BFF", 0.19, HorizontalAlignment.Right, VerticalAlignment.Top, new Thickness(0, -260, -185, 0));
+                AddAmbientGlow(560, 560, "#257CFF", 0.12, HorizontalAlignment.Left, VerticalAlignment.Bottom, new Thickness(-180, 0, 0, -270));
+            }
 
             var layout = new Grid { Margin = new Thickness(20, 12, 20, 12) };
             layout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(58) });
@@ -255,98 +261,31 @@ namespace AeroOS.Windows
         }
 
 
+
         private void BuildDesktop(Grid layout)
         {
-            var body = new Grid { Margin = new Thickness(0, 17, 0, 16) };
-            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(190) });
-            body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            Grid.SetRow(body, 1);
-            layout.Children.Add(body);
-
-            var sidebar = GlassCard(new Thickness(14, 17, 14, 14), 22);
-            sidebar.Margin = new Thickness(0, 0, 15, 0);
-            var sideScroll = new ScrollViewer
-            {
-                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
-            };
-            var sideStack = new StackPanel();
-            var brand = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(5, 1, 0, 21) };
-            var logo = new Border
-            {
-                Width = 35,
-                Height = 35,
-                CornerRadius = new CornerRadius(12),
-                Background = AccentFillBrush(),
-                Child = new TextBlock
-                {
-                    Text = "✦",
-                    Foreground = Brushes.White,
-                    FontSize = 20,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center
-                }
-            };
-            brand.Children.Add(logo);
-            var brandName = new StackPanel { Margin = new Thickness(9, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
-            brandName.Children.Add(MakeText("AEROSHELL", 12, "Text", FontWeights.Bold));
-            brandName.Children.Add(MakeText("DESKTOP", 8, "Muted", FontWeights.SemiBold));
-            brand.Children.Add(brandName);
-            sideStack.Children.Add(brand);
-
-            sideStack.Children.Add(MakeText("WORKSPACE", 8, "Muted", FontWeights.Bold, new Thickness(8, 0, 0, 8)));
             _navigationButtons.Clear();
-            sideStack.Children.Add(NavigationButton("Home", "▣", "Desktop"));
-            sideStack.Children.Add(NavigationButton("Apps", "▦", "All apps"));
-            sideStack.Children.Add(NavigationButton("Files", "▤", "Files & folders"));
-            sideStack.Children.Add(NavigationButton("Settings", "⚙", "Personalization"));
-
-            sideStack.Children.Add(new Border { Height = 1, Background = LineBrush(), Margin = new Thickness(7, 17, 7, 13) });
-            sideStack.Children.Add(MakeText("QUICK PLACES", 8, "Muted", FontWeights.Bold, new Thickness(8, 0, 0, 7)));
-            sideStack.Children.Add(PlaceActionButton("↓", "Downloads", delegate
-            {
-                OpenFolder(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"));
-            }));
-            sideStack.Children.Add(PlaceActionButton("▣", "This PC", delegate { OpenFolder("shell:MyComputerFolder"); }));
-            sideStack.Children.Add(PlaceActionButton("♲", "Recycle Bin", delegate { OpenFolder("shell:RecycleBinFolder"); }));
-
-            sideStack.Children.Add(new Border { Height = 1, Background = LineBrush(), Margin = new Thickness(7, 16, 7, 12) });
-            sideStack.Children.Add(MakeText("WINDOWS TOOLS", 8, "Muted", FontWeights.Bold, new Thickness(8, 0, 0, 7)));
-            sideStack.Children.Add(PlaceActionButton("⚙", "Windows Settings", OpenWindowsSettings));
-            sideStack.Children.Add(PlaceActionButton("▥", "Task Manager", delegate { LaunchBuiltin("@taskmanager"); }));
-            sideStack.Children.Add(new Border { Height = 1, Background = LineBrush(), Margin = new Thickness(7, 16, 7, 12) });
-            var safetyNote = GlassCard(new Thickness(10, 10, 10, 10), 14);
-            safetyNote.Background = BrushFrom("#168B7CF6");
-            var safetyStack = new StackPanel();
-            safetyStack.Children.Add(MakeText("WINDOWS 10 STAYS SAFE", 8, "Accent", FontWeights.Bold));
-            safetyStack.Children.Add(MakeText("AeroShell is a launcher window. Exit any time to return to your normal desktop.", 8, "Muted", FontWeights.Normal, new Thickness(0, 4, 0, 0)));
-            safetyNote.Child = safetyStack;
-            sideStack.Children.Add(safetyNote);
-
-            sideScroll.Content = sideStack;
-            sidebar.Child = sideScroll;
-            body.Children.Add(sidebar);
-
-            var main = new Grid();
+            var main = new Grid { Margin = new Thickness(0, 14, 0, 14) };
             main.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
             main.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-            Grid.SetColumn(main, 1);
-            body.Children.Add(main);
+            Grid.SetRow(main, 1);
+            layout.Children.Add(main);
 
-            var pageHeader = new Grid { Margin = new Thickness(5, 1, 5, 13) };
+            var pageHeader = new Grid { Margin = new Thickness(7, 2, 7, 14) };
             pageHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             pageHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             var pageLabels = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-            _pageHeading = MakeText("Desktop", 23, "Text", FontWeights.SemiBold);
-            _pageDescription = MakeText("Your apps, folders and Windows tools in one place.", 9, "Muted", FontWeights.Normal, new Thickness(1, 2, 0, 0));
+            _pageHeading = MakeText("Desktop", 25, "Text", FontWeights.SemiBold);
+            _pageDescription = MakeText("A calmer, cleaner place for your apps and files.", 10, "Muted", FontWeights.Normal, new Thickness(1, 3, 0, 0));
             pageLabels.Children.Add(_pageHeading);
             pageLabels.Children.Add(_pageDescription);
             pageHeader.Children.Add(pageLabels);
+
             var headerActions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-            var dateCard = GlassCard(new Thickness(12, 7, 12, 7), 13);
+            var dateCard = GlassCard(new Thickness(15, 8, 15, 8), 15);
             var dateStack = new StackPanel();
-            _clockLabel = MakeText("", 12, "Text", FontWeights.SemiBold);
-            _dateLabel = MakeText("", 8, "Muted");
+            _clockLabel = MakeText("", 13, "Text", FontWeights.SemiBold);
+            _dateLabel = MakeText("", 9, "Muted");
             dateStack.Children.Add(_clockLabel);
             dateStack.Children.Add(_dateLabel);
             dateCard.Child = dateStack;
@@ -355,15 +294,21 @@ namespace AeroOS.Windows
             pageHeader.Children.Add(headerActions);
             main.Children.Add(pageHeader);
 
-            var pageCard = GlassCard(new Thickness(17, 16, 17, 15), 21);
-            pageCard.Background = BrushFrom("#18FFFFFF");
-            pageCard.BorderBrush = BrushFrom("#42FFFFFF");
+            var pageCard = GlassCard(new Thickness(23, 21, 23, 20), 25);
+            pageCard.Background = BrushFrom(_settings.Theme == "Light" ? "#38FFFFFF" : "#1DFFFFFF");
+            pageCard.BorderBrush = BrushFrom(_settings.Theme == "Light" ? "#7FFFFFFF" : "#50FFFFFF");
             pageCard.Margin = new Thickness(0, 0, 0, 2);
+            pageCard.Effect = _settings.PerformanceMode ? null : new DropShadowEffect
+            {
+                Color = Color.FromRgb(0, 0, 0),
+                BlurRadius = 28,
+                ShadowDepth = 8,
+                Opacity = 0.24
+            };
             _pageHost = new Grid();
             pageCard.Child = _pageHost;
             Grid.SetRow(pageCard, 1);
             main.Children.Add(pageCard);
-
             NavigateTo("Home");
         }
 
@@ -427,36 +372,78 @@ namespace AeroOS.Windows
             RefreshNavigationStyles();
         }
 
+
         private UIElement BuildHomePage()
         {
             var stack = new StackPanel { Margin = new Thickness(2, 1, 2, 1) };
-            stack.Children.Add(MakeText("DESKTOP SHORTCUTS", 9, "Muted", FontWeights.Bold, new Thickness(4, 2, 0, 8)));
+            var hero = GlassCard(new Thickness(24, 20, 24, 20), 22);
+            hero.Margin = new Thickness(2, 0, 2, 20);
+            hero.Background = BrushFrom(_settings.Theme == "Light" ? "#68FFFFFF" : "#392D4775");
+            hero.BorderBrush = BrushFrom("#68FFFFFF");
+            hero.Effect = _settings.PerformanceMode ? null : new DropShadowEffect
+            {
+                Color = ColorFrom(_settings.AccentColor),
+                BlurRadius = 24,
+                ShadowDepth = 0,
+                Opacity = 0.16
+            };
 
-            var icons = new WrapPanel { Margin = new Thickness(-4, 0, -4, 4) };
-            icons.Children.Add(CreateDesktopIcon("▣", "This PC", "View drives and connected devices", delegate { OpenFolder("shell:MyComputerFolder"); }));
-            icons.Children.Add(CreateDesktopIcon("♲", "Recycle Bin", "Open deleted items", delegate { OpenFolder("shell:RecycleBinFolder"); }));
-            icons.Children.Add(CreateDesktopIcon("▤", "File Explorer", "Browse files and folders", delegate { LaunchBuiltin("@explorer"); }));
-            icons.Children.Add(CreateDesktopIcon("◎", "Browser", "Open your default web browser", delegate { LaunchBuiltin("@browser"); }));
-            icons.Children.Add(CreateDesktopIcon("↓", "Downloads", "Open your Downloads folder", delegate
+            var heroGrid = new Grid();
+            heroGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            heroGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var welcome = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            welcome.Children.Add(MakeText(GetGreeting(), 29, "Text", FontWeights.SemiBold));
+            welcome.Children.Add(MakeText("Welcome to your AeroShell desktop.", 11, "Muted", FontWeights.Normal, new Thickness(1, 5, 0, 0)));
+            welcome.Children.Add(MakeText("Your Windows apps and everyday places, all within easy reach.", 9, "Muted", FontWeights.Normal, new Thickness(1, 3, 0, 0)));
+            heroGrid.Children.Add(welcome);
+
+            var heroMark = new Border
+            {
+                Width = 78,
+                Height = 78,
+                CornerRadius = new CornerRadius(24),
+                Background = AccentFillBrush(),
+                BorderBrush = BrushFrom("#88FFFFFF"),
+                BorderThickness = new Thickness(1),
+                Child = new TextBlock
+                {
+                    Text = "✦",
+                    FontSize = 39,
+                    Foreground = Brushes.White,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                }
+            };
+            Grid.SetColumn(heroMark, 1);
+            heroGrid.Children.Add(heroMark);
+            hero.Child = heroGrid;
+            stack.Children.Add(hero);
+
+            stack.Children.Add(MakeText("QUICK ACCESS", 9, "Muted", FontWeights.Bold, new Thickness(4, 0, 0, 10)));
+            var icons = new WrapPanel { Margin = new Thickness(-5, 0, -5, 2) };
+            icons.Children.Add(CreateDesktopIcon("\uE7F4", "This PC", "View drives and connected devices", delegate { OpenFolder("shell:MyComputerFolder"); }));
+            icons.Children.Add(CreateDesktopIcon("\uE74D", "Recycle Bin", "Open deleted items", delegate { OpenFolder("shell:RecycleBinFolder"); }));
+            icons.Children.Add(CreateDesktopIcon("\uED25", "File Explorer", "Browse files and folders", delegate { LaunchBuiltin("@explorer"); }));
+            icons.Children.Add(CreateDesktopIcon("\uE774", "Browser", "Open your default web browser", delegate { LaunchBuiltin("@browser"); }));
+            icons.Children.Add(CreateDesktopIcon("\uE896", "Downloads", "Open your Downloads folder", delegate
             {
                 OpenFolder(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"));
             }));
-            icons.Children.Add(CreateDesktopIcon("▧", "Documents", "Open your Documents folder", delegate { OpenFolder(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)); }));
-            icons.Children.Add(CreateDesktopIcon("▨", "Pictures", "Open your Pictures folder", delegate { OpenFolder(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures)); }));
-            icons.Children.Add(CreateDesktopIcon("♫", "Music", "Open your Music folder", delegate { OpenFolder(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic)); }));
-            icons.Children.Add(CreateDesktopIcon("⚙", "Windows Settings", "Open native Windows Settings", OpenWindowsSettings));
-            icons.Children.Add(CreateDesktopIcon("▦", "Calculator", "Open Windows Calculator", delegate { LaunchBuiltin("@calculator"); }));
-            icons.Children.Add(CreateDesktopIcon("▧", "Paint", "Open Microsoft Paint", delegate { LaunchBuiltin("@paint"); }));
-            icons.Children.Add(CreateDesktopIcon("✎", "Notepad", "Open Notepad", delegate { LaunchBuiltin("@notepad"); }));
-            icons.Children.Add(CreateDesktopIcon("▥", "Task Manager", "View running Windows processes", delegate { LaunchBuiltin("@taskmanager"); }));
+            icons.Children.Add(CreateDesktopIcon("\uE8A5", "Documents", "Open your Documents folder", delegate { OpenFolder(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)); }));
+            icons.Children.Add(CreateDesktopIcon("\uEB9F", "Pictures", "Open your Pictures folder", delegate { OpenFolder(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures)); }));
+            icons.Children.Add(CreateDesktopIcon("\uE8D6", "Music", "Open your Music folder", delegate { OpenFolder(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic)); }));
+            icons.Children.Add(CreateDesktopIcon("\uE713", "Settings", "Open native Windows Settings", OpenWindowsSettings));
+            icons.Children.Add(CreateDesktopIcon("\uE8EF", "Calculator", "Open Windows Calculator", delegate { LaunchBuiltin("@calculator"); }));
+            icons.Children.Add(CreateDesktopIcon("\uE771", "Paint", "Open Microsoft Paint", delegate { LaunchBuiltin("@paint"); }));
+            icons.Children.Add(CreateDesktopIcon("\uE70F", "Notepad", "Open Notepad", delegate { LaunchBuiltin("@notepad"); }));
+            icons.Children.Add(CreateDesktopIcon("\uE9D9", "Task Manager", "View running Windows processes", delegate { LaunchBuiltin("@taskmanager"); }));
             stack.Children.Add(icons);
 
-            var note = GlassCard(new Thickness(13, 10, 13, 10), 14);
-            note.Margin = new Thickness(3, 12, 3, 0);
-            note.Background = BrushFrom("#12FFFFFF");
-            note.Child = MakeText("Select a shortcut once to open the real Windows app or folder. Use All apps to find installed programs, Files & folders for common locations, or Start to search.", 9, "Muted");
+            var note = GlassCard(new Thickness(15, 12, 15, 12), 16);
+            note.Margin = new Thickness(2, 13, 2, 0);
+            note.Background = BrushFrom("#18FFFFFF");
+            note.Child = MakeText("Tip: use the centered taskbar for Start, apps, folders and personalization. Your regular Windows desktop and files remain unchanged when you exit AeroShell.", 9, "Muted");
             stack.Children.Add(note);
-
             return new ScrollViewer
             {
                 Content = stack,
@@ -465,42 +452,48 @@ namespace AeroOS.Windows
             };
         }
 
+
         private Button CreateDesktopIcon(string glyph, string title, string description, Action action)
         {
-            var button = MakeButton(string.Empty, action, false, 10, 104, 96);
-            button.Width = 96;
-            button.Height = 108;
-            button.Margin = new Thickness(4, 3, 4, 5);
-            button.Padding = new Thickness(4);
-            button.Background = BrushFrom("#0EFFFFFF");
-            button.BorderBrush = BrushFrom("#24FFFFFF");
+            var button = MakeButton(string.Empty, action, false, 10, 116, 112);
+            button.Width = 112;
+            button.Height = 116;
+            button.Margin = new Thickness(5, 3, 5, 6);
+            button.Padding = new Thickness(7, 7, 7, 6);
+            button.Background = BrushFrom("#16FFFFFF");
+            button.BorderBrush = BrushFrom("#2DFFFFFF");
             button.BorderThickness = new Thickness(1);
             button.HorizontalContentAlignment = HorizontalAlignment.Center;
             button.VerticalContentAlignment = VerticalAlignment.Center;
             button.ToolTip = description;
-
             var content = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
             var icon = new Border
             {
-                Width = 48,
-                Height = 48,
-                CornerRadius = new CornerRadius(15),
-                Background = BrushFrom("#388B7CF6"),
-                BorderBrush = BrushFrom("#708B7CF6"),
+                Width = 54,
+                Height = 54,
+                CornerRadius = new CornerRadius(17),
+                Background = AccentFillBrush(),
+                BorderBrush = BrushFrom("#70FFFFFF"),
                 BorderThickness = new Thickness(1),
+                Effect = _settings.PerformanceMode ? null : new DropShadowEffect
+                {
+                    Color = ColorFrom(_settings.AccentColor),
+                    BlurRadius = 12,
+                    ShadowDepth = 2,
+                    Opacity = 0.20
+                },
                 Child = new TextBlock
                 {
                     Text = glyph,
+                    FontFamily = new System.Windows.Media.FontFamily("Segoe MDL2 Assets"),
                     Foreground = Brushes.White,
-                    FontSize = 23,
-                    FontWeight = FontWeights.SemiBold,
+                    FontSize = 27,
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center
                 }
             };
             content.Children.Add(icon);
-
-            var label = MakeText(title, 9, "Text", FontWeights.SemiBold, new Thickness(0, 7, 0, 0));
+            var label = MakeText(title, 9, "Text", FontWeights.SemiBold, new Thickness(0, 8, 0, 0));
             label.TextAlignment = TextAlignment.Center;
             label.TextWrapping = TextWrapping.Wrap;
             label.MaxHeight = 28;
@@ -536,7 +529,7 @@ namespace AeroOS.Windows
                 BuildShell();
                 NavigateTo("Settings");
             }, false, 10, 38);
-            stack.Children.Add(SettingCard("Performance", "Reduced effects avoids loading the optional wallpaper and is recommended for older graphics hardware.", performance));
+            stack.Children.Add(SettingCard("Performance", "Reduced Effects also disables large shadows and animated dock glow, and skips the optional wallpaper for older graphics hardware.", performance));
 
             var wallpaperRow = new StackPanel { Orientation = Orientation.Horizontal };
             wallpaperRow.Children.Add(MakeButton("Choose wallpaper", delegate { ChooseWallpaper_Click(this, new RoutedEventArgs()); }, false, 10, 38));
@@ -582,6 +575,12 @@ namespace AeroOS.Windows
                 Foreground = TextBrush(),
                 CaretBrush = AccentBrush(),
                 FontSize = 12,
+                MinWidth = 0,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Hidden,
+                TextWrapping = TextWrapping.NoWrap,
+                AcceptsReturn = false,
                 VerticalContentAlignment = VerticalAlignment.Center,
                 Margin = new Thickness(10, 0, 0, 0),
                 ToolTip = "Search apps by name or category"
@@ -694,63 +693,87 @@ namespace AeroOS.Windows
             };
         }
 
+
         private void BuildTaskbar(Grid layout)
         {
-            var taskbar = GlassCard(new Thickness(11, 8, 11, 8), 22);
-            taskbar.Width = Math.Max(600, Math.Min(790, SystemParameters.WorkArea.Width - 40));
-            taskbar.Height = 58;
+            var taskbar = GlassCard(new Thickness(13, 9, 13, 9), 23);
+            taskbar.Width = Math.Max(540, Math.Min(820, SystemParameters.WorkArea.Width - 48));
+            taskbar.Height = 66;
             taskbar.HorizontalAlignment = HorizontalAlignment.Center;
             taskbar.VerticalAlignment = VerticalAlignment.Center;
-            taskbar.Margin = new Thickness(0, 0, 0, 2);
+            taskbar.Margin = new Thickness(0, 0, 0, 3);
+            taskbar.Background = BrushFrom(_settings.Theme == "Light" ? "#DDF6FAFF" : "#D51A2943");
+            taskbar.BorderBrush = BrushFrom("#9AFFFFFF");
+            taskbar.Effect = _settings.PerformanceMode ? null : new DropShadowEffect
+            {
+                Color = Color.FromRgb(0, 0, 0),
+                BlurRadius = 30,
+                ShadowDepth = 9,
+                Opacity = 0.40
+            };
             Grid.SetRow(taskbar, 2);
 
             var grid = new Grid();
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-            var start = MakeButton("⊞  Start", ShowStart, true, 11, 41, 100);
-            start.Margin = new Thickness(0, 0, 8, 0);
-            grid.Children.Add(start);
-
             var dock = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center
             };
-            dock.Children.Add(DockButton("▣", "Desktop", delegate { NavigateTo("Home"); }));
-            dock.Children.Add(DockButton("▤", "File Explorer", delegate { LaunchBuiltin("@explorer"); }));
-            dock.Children.Add(DockButton("◎", "Browser", delegate { LaunchBuiltin("@browser"); }));
-            dock.Children.Add(DockButton("▦", "All apps", delegate { NavigateTo("Apps"); }));
-            dock.Children.Add(DockButton("▤", "Files & folders", delegate { NavigateTo("Files"); }));
-            dock.Children.Add(DockButton("⚙", "Personalization", delegate { NavigateTo("Settings"); }));
-            dock.Children.Add(DockButton("▦", "Calculator", delegate { LaunchBuiltin("@calculator"); }));
-            dock.Children.Add(DockButton("▧", "Paint", delegate { LaunchBuiltin("@paint"); }));
-            dock.Children.Add(DockButton("✎", "Notepad", delegate { LaunchBuiltin("@notepad"); }));
-            Grid.SetColumn(dock, 1);
+            var start = DockButton("", "Start", ShowStart);
+            start.Content = CreateWindowsLogo();
+            dock.Children.Add(start);
+            dock.Children.Add(DockButton("\uE80F", "Desktop", delegate { NavigateTo("Home"); }));
+            dock.Children.Add(DockButton("\uED25", "File Explorer", delegate { LaunchBuiltin("@explorer"); }));
+            dock.Children.Add(DockButton("\uE774", "Browser", delegate { LaunchBuiltin("@browser"); }));
+            dock.Children.Add(DockButton("\uE71D", "All apps", delegate { NavigateTo("Apps"); }));
+            dock.Children.Add(DockButton("\uE8B7", "Files & folders", delegate { NavigateTo("Files"); }));
+            dock.Children.Add(DockButton("\uE713", "Personalization", delegate { NavigateTo("Settings"); }));
+            dock.Children.Add(DockButton("\uE8EF", "Calculator", delegate { LaunchBuiltin("@calculator"); }));
+            dock.Children.Add(DockButton("\uE771", "Paint", delegate { LaunchBuiltin("@paint"); }));
+            dock.Children.Add(DockButton("\uE70F", "Notepad", delegate { LaunchBuiltin("@notepad"); }));
+            Grid.SetColumn(dock, 0);
             grid.Children.Add(dock);
 
-            var actions = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-            var status = MakeText(_settings.PerformanceMode ? "LOW EFFECTS" : "AEROSHELL", 8, "Muted", FontWeights.Bold);
-            status.Margin = new Thickness(0, 0, 8, 0);
-            actions.Children.Add(status);
-            var exit = MakeButton("⏻", delegate { Close(); }, false, 16, 41, 41);
-            exit.ToolTip = "Exit AeroShell and return to Windows";
-            exit.Margin = new Thickness(0);
-            actions.Children.Add(exit);
-            Grid.SetColumn(actions, 2);
-            grid.Children.Add(actions);
-
+            var exit = DockButton("\uE7E8", "Exit AeroShell", delegate { Close(); });
+            exit.Margin = new Thickness(8, 0, 0, 0);
+            Grid.SetColumn(exit, 1);
+            grid.Children.Add(exit);
             taskbar.Child = grid;
             layout.Children.Add(taskbar);
         }
+
+        private UIElement CreateWindowsLogo()
+        {
+            var logo = new Grid { Width = 23, Height = 23 };
+            logo.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            logo.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            logo.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            logo.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var panes = new[]
+            {
+                new Border { Background = BrushFrom("#78B9FF"), CornerRadius = new CornerRadius(1), Margin = new Thickness(0, 0, 2, 2) },
+                new Border { Background = BrushFrom("#4B9CFF"), CornerRadius = new CornerRadius(1), Margin = new Thickness(2, 0, 0, 2) },
+                new Border { Background = BrushFrom("#4B9CFF"), CornerRadius = new CornerRadius(1), Margin = new Thickness(0, 2, 2, 0) },
+                new Border { Background = BrushFrom("#2780F4"), CornerRadius = new CornerRadius(1), Margin = new Thickness(2, 2, 0, 0) }
+            };
+            for (var i = 0; i < panes.Length; i++)
+            {
+                Grid.SetRow(panes[i], i / 2);
+                Grid.SetColumn(panes[i], i % 2);
+                logo.Children.Add(panes[i]);
+            }
+            return logo;
+        }
+
 
         private Grid BuildStartOverlay()
         {
             var overlay = new Grid
             {
-                Background = BrushFrom("#99050A16"),
+                Background = BrushFrom("#3A050A16"),
                 Visibility = Visibility.Collapsed
             };
             overlay.MouseDown += delegate(object sender, MouseButtonEventArgs e)
@@ -758,12 +781,21 @@ namespace AeroOS.Windows
                 if (ReferenceEquals(e.OriginalSource, overlay)) overlay.Visibility = Visibility.Collapsed;
             };
 
-            var card = GlassCard(new Thickness(25, 23, 25, 20), 25);
-            card.Width = Math.Max(340, Math.Min(720, SystemParameters.WorkArea.Width - 48));
-            card.Height = Math.Max(330, Math.Min(575, SystemParameters.WorkArea.Height - 100));
+            var card = GlassCard(new Thickness(25, 22, 25, 19), 26);
+            card.Width = Math.Max(360, Math.Min(660, SystemParameters.WorkArea.Width - 48));
+            card.Height = Math.Max(380, Math.Min(570, SystemParameters.WorkArea.Height - 120));
             card.HorizontalAlignment = HorizontalAlignment.Center;
-            card.VerticalAlignment = VerticalAlignment.Center;
-            card.PreviewMouseDown += delegate(object sender, MouseButtonEventArgs e) { e.Handled = true; };
+            card.VerticalAlignment = VerticalAlignment.Bottom;
+            card.Margin = new Thickness(0, 0, 0, 84);
+            card.Background = BrushFrom(_settings.Theme == "Light" ? "#F2F8FCFF" : "#E51B2A45");
+            card.BorderBrush = BrushFrom("#B5FFFFFF");
+            card.Effect = _settings.PerformanceMode ? null : new DropShadowEffect
+            {
+                Color = ColorFrom(_settings.AccentColor),
+                BlurRadius = 38,
+                ShadowDepth = 10,
+                Opacity = 0.34
+            };
 
             var stack = new DockPanel();
             var top = new StackPanel();
@@ -771,41 +803,71 @@ namespace AeroOS.Windows
             titleRow.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             titleRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             var title = new StackPanel();
-            title.Children.Add(MakeText("Start", 26, "Text", FontWeights.SemiBold));
-            title.Children.Add(MakeText("Your apps, tools and recent activity.", 10, "Muted", FontWeights.Normal, new Thickness(0, 2, 0, 0)));
+            title.Children.Add(MakeText("Start", 27, "Text", FontWeights.SemiBold));
+            title.Children.Add(MakeText("Pinned apps and everything you need.", 10, "Muted", FontWeights.Normal, new Thickness(0, 2, 0, 0)));
             titleRow.Children.Add(title);
-            var close = MakeButton("×", delegate { overlay.Visibility = Visibility.Collapsed; }, false, 16, 36, 40);
+            var close = MakeButton("\u00D7", delegate { overlay.Visibility = Visibility.Collapsed; }, false, 17, 36, 40);
+            close.ToolTip = "Close Start";
             Grid.SetColumn(close, 1);
             titleRow.Children.Add(close);
             top.Children.Add(titleRow);
 
+            var searchCard = GlassCard(new Thickness(12, 1, 12, 1), 15);
+            searchCard.Height = 49;
+            searchCard.Margin = new Thickness(0, 17, 0, 0);
+            searchCard.Background = BrushFrom("#24FFFFFF");
+            var searchGrid = new Grid();
+            searchGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            searchGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            searchGrid.Children.Add(MakeText("\uE721", 18, "Muted"));
             var search = new TextBox
             {
-                Height = 46,
-                Margin = new Thickness(0, 17, 0, 0),
-                Padding = new Thickness(15, 9, 12, 9),
+                Height = 43,
+                MinWidth = 0,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Hidden,
+                VerticalScrollBarVisibility = ScrollBarVisibility.Hidden,
+                TextWrapping = TextWrapping.NoWrap,
+                AcceptsReturn = false,
+                Padding = new Thickness(10, 8, 10, 8),
                 FontSize = 13,
                 FontFamily = new System.Windows.Media.FontFamily("Segoe UI"),
-                Background = BrushFrom("#22FFFFFF"),
+                Background = Brushes.Transparent,
                 Foreground = TextBrush(),
-                BorderBrush = LineBrush(),
-                BorderThickness = new Thickness(1),
+                BorderThickness = new Thickness(0),
                 CaretBrush = AccentBrush(),
-                ToolTip = "Search installed Start Menu apps"
+                Margin = new Thickness(6, 0, 0, 0),
+                ToolTip = "Search installed apps"
             };
             search.TextChanged += StartSearch_TextChanged;
             search.PreviewKeyDown += StartSearch_PreviewKeyDown;
             _startSearch = search;
-            top.Children.Add(search);
+            Grid.SetColumn(search, 1);
+            searchGrid.Children.Add(search);
+            searchCard.Child = searchGrid;
+            top.Children.Add(searchCard);
 
-            top.Children.Add(MakeText("PINNED", 9, "Muted", FontWeights.Bold, new Thickness(2, 17, 0, 8)));
+            var pinnedHeader = new Grid { Margin = new Thickness(2, 17, 2, 8) };
+            pinnedHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            pinnedHeader.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            pinnedHeader.Children.Add(MakeText("PINNED", 9, "Muted", FontWeights.Bold));
+            var allApps = MakeButton("All apps  \u2192", delegate
+            {
+                overlay.Visibility = Visibility.Collapsed;
+                NavigateTo("Apps");
+            }, false, 9, 30);
+            Grid.SetColumn(allApps, 1);
+            pinnedHeader.Children.Add(allApps);
+            top.Children.Add(pinnedHeader);
+
             var pinned = new WrapPanel { Margin = new Thickness(-4, 0, -4, 8) };
-            pinned.Children.Add(StartPinned("▤", "Explorer", delegate { LaunchBuiltin("@explorer"); }));
-            pinned.Children.Add(StartPinned("◎", "Browser", delegate { LaunchBuiltin("@browser"); }));
-            pinned.Children.Add(StartPinned("⚙", "Settings", OpenWindowsSettings));
-            pinned.Children.Add(StartPinned("▦", "Calculator", delegate { LaunchBuiltin("@calculator"); }));
-            pinned.Children.Add(StartPinned("▧", "Paint", delegate { LaunchBuiltin("@paint"); }));
-            pinned.Children.Add(StartPinned("▤", "Notepad", delegate { LaunchBuiltin("@notepad"); }));
+            pinned.Children.Add(StartPinned("\uED25", "Explorer", delegate { LaunchBuiltin("@explorer"); }));
+            pinned.Children.Add(StartPinned("\uE774", "Browser", delegate { LaunchBuiltin("@browser"); }));
+            pinned.Children.Add(StartPinned("\uE713", "Settings", OpenWindowsSettings));
+            pinned.Children.Add(StartPinned("\uE8EF", "Calculator", delegate { LaunchBuiltin("@calculator"); }));
+            pinned.Children.Add(StartPinned("\uE771", "Paint", delegate { LaunchBuiltin("@paint"); }));
+            pinned.Children.Add(StartPinned("\uE70F", "Notepad", delegate { LaunchBuiltin("@notepad"); }));
             top.Children.Add(pinned);
             DockPanel.SetDock(top, Dock.Top);
             stack.Children.Add(top);
@@ -814,16 +876,14 @@ namespace AeroOS.Windows
             {
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-                Margin = new Thickness(0, 5, 0, 0)
+                Margin = new Thickness(0, 4, 0, 0)
             };
             _startResults = new StackPanel();
             scroll.Content = _startResults;
             stack.Children.Add(scroll);
-
-            var footer = MakeText("AeroShell launches the Windows apps already installed on this PC.", 9, "Muted", FontWeights.Normal, new Thickness(1, 9, 0, 0));
+            var footer = MakeText("AeroShell opens apps already installed in Windows.", 9, "Muted", FontWeights.Normal, new Thickness(1, 10, 0, 0));
             DockPanel.SetDock(footer, Dock.Bottom);
             stack.Children.Add(footer);
-
             card.Child = stack;
             overlay.Children.Add(card);
             return overlay;
@@ -1022,31 +1082,90 @@ namespace AeroOS.Windows
             return button;
         }
 
+
         private Button StartPinned(string glyph, string label, Action action)
         {
-            var button = MakeButton(string.Empty, action, false, 9, 70);
-            button.Width = 91;
-            button.Height = 70;
-            button.Margin = new Thickness(4);
+            var button = MakeButton(string.Empty, delegate
+            {
+                if (_startOverlay != null) _startOverlay.Visibility = Visibility.Collapsed;
+                action();
+            }, false, 9, 77);
+            button.Width = 88;
+            button.Height = 77;
+            button.Margin = new Thickness(3);
             button.Padding = new Thickness(5);
+            button.Background = Brushes.Transparent;
+            button.BorderBrush = Brushes.Transparent;
             var stack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-            stack.Children.Add(MakeText(glyph, 22, "Accent", FontWeights.Normal));
-            stack.Children.Add(MakeText(label, 9, "Text", FontWeights.SemiBold));
+            stack.Children.Add(new TextBlock
+            {
+                Text = glyph,
+                FontFamily = new System.Windows.Media.FontFamily("Segoe MDL2 Assets"),
+                FontSize = 25,
+                Foreground = AccentBrush(),
+                HorizontalAlignment = HorizontalAlignment.Center
+            });
+            stack.Children.Add(MakeText(label, 9, "Text", FontWeights.SemiBold, new Thickness(0, 6, 0, 0)));
             button.Content = stack;
+            button.ToolTip = "Open " + label;
             return button;
         }
 
+
         private Button DockButton(string glyph, string label, Action action)
         {
-            var button = MakeButton(glyph, action, false, 20, 43, 43);
-            button.Width = 43;
-            button.Height = 43;
+            var button = MakeButton(glyph, action, false, 21, 46, 46);
+            button.Width = 46;
+            button.Height = 46;
             button.Margin = new Thickness(2, 0, 2, 0);
             button.Padding = new Thickness(2);
             button.Background = Brushes.Transparent;
             button.BorderBrush = Brushes.Transparent;
             button.Foreground = TextBrush();
-            button.ToolTip = label;
+            button.FontFamily = new System.Windows.Media.FontFamily("Segoe MDL2 Assets");
+            button.FontSize = 21;
+            button.ToolTip = new ToolTip
+            {
+                Content = label,
+                Background = BrushFrom("#F01A2943"),
+                Foreground = Brushes.White,
+                BorderBrush = BrushFrom("#A5FFFFFF"),
+                BorderThickness = new Thickness(1),
+                Padding = new Thickness(10, 6, 10, 6),
+                FontFamily = new System.Windows.Media.FontFamily("Segoe UI"),
+                FontSize = 10,
+                Effect = new DropShadowEffect { BlurRadius = 12, ShadowDepth = 3, Opacity = 0.25 }
+            };
+            ToolTipService.SetInitialShowDelay(button, 420);
+            ToolTipService.SetShowDuration(button, 2600);
+            if (!_settings.PerformanceMode)
+            {
+                var scale = new ScaleTransform(1.0, 1.0);
+                button.RenderTransform = scale;
+                button.RenderTransformOrigin = new Point(0.5, 0.5);
+                var glow = new DropShadowEffect
+                {
+                    Color = ColorFrom(_settings.AccentColor),
+                    BlurRadius = 0,
+                    ShadowDepth = 0,
+                    Opacity = 0
+                };
+                button.Effect = glow;
+                button.MouseEnter += delegate
+                {
+                    scale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1.12, TimeSpan.FromMilliseconds(135)));
+                    scale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1.12, TimeSpan.FromMilliseconds(135)));
+                    glow.BeginAnimation(DropShadowEffect.BlurRadiusProperty, new DoubleAnimation(17, TimeSpan.FromMilliseconds(150)));
+                    glow.BeginAnimation(DropShadowEffect.OpacityProperty, new DoubleAnimation(0.48, TimeSpan.FromMilliseconds(150)));
+                };
+                button.MouseLeave += delegate
+                {
+                    scale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(145)));
+                    scale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(145)));
+                    glow.BeginAnimation(DropShadowEffect.BlurRadiusProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(145)));
+                    glow.BeginAnimation(DropShadowEffect.OpacityProperty, new DoubleAnimation(0, TimeSpan.FromMilliseconds(145)));
+                };
+            }
             return button;
         }
 

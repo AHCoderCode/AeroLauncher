@@ -63,12 +63,18 @@
             </Setter>
         </Style>
 
+
         <Style TargetType="{x:Type TextBox}">
             <Setter Property="FontFamily" Value="Segoe UI" />
             <Setter Property="FontSize" Value="12" />
             <Setter Property="Foreground" Value="{StaticResource AeroTextBrush}" />
             <Setter Property="CaretBrush" Value="{StaticResource AeroAccentBrush}" />
             <Setter Property="Padding" Value="12,8" />
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="TextWrapping" Value="NoWrap" />
+            <Setter Property="HorizontalScrollBarVisibility" Value="Hidden" />
+            <Setter Property="VerticalScrollBarVisibility" Value="Hidden" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="BorderBrush" Value="{StaticResource AeroGlassEdgeBrush}" />
             <Setter Property="Background" Value="#33101A2C" />
@@ -80,10 +86,16 @@
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
                                 CornerRadius="11"
+                                Padding="{TemplateBinding Padding}"
                                 SnapsToDevicePixels="True">
                             <ScrollViewer x:Name="PART_ContentHost"
-                                          Margin="{TemplateBinding Padding}"
-                                          VerticalAlignment="Center" />
+                                          Margin="0"
+                                          VerticalAlignment="Center"
+                                          HorizontalScrollBarVisibility="{TemplateBinding HorizontalScrollBarVisibility}"
+                                          VerticalScrollBarVisibility="Hidden"
+                                          CanContentScroll="False"
+                                          Focusable="False"
+                                          SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsKeyboardFocused" Value="True">
