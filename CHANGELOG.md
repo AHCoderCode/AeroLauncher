@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.8.0 - 2026-11-27
+
+- Removed the permanent left navigation rail and expanded the main desktop workspace.
+- Rebuilt the centered bottom taskbar with icon-only shortcuts and hover-name tooltips.
+- Replaced the text-based Start button with a four-pane Windows-style logo.
+- Moved the Start panel above the taskbar and refined its glass surface, shadow, spacing and pinned-app layout.
+- Added Fluent-style Windows system glyphs to desktop, Start and taskbar shortcuts.
+- Added layered ambient gradients, soft shadows and short hover-lift/glow effects without continuous animation loops.
+- Fixed the Start panel mouse-down interception that could interfere with clicking its search field.
+- Reworked the TextBox template so padding is applied by the outer border rather than shrinking the text viewport; search fields remain single-line and caret-visible.
+- Kept all navigation destinations available through the taskbar and Start panel.
+- Preserved the portable app model and the no-installer/no-shell-takeover/no-boot-change safety contract.
+- Updated the release version to 0.8.0. Build and static checks are automated; target-laptop UI, scaling and performance checks remain pending.
+
 ## 0.7.0 - 2026-11-27
 
 - Reworked the Home destination into a desktop-style shortcut surface with one-click shortcuts for common Windows apps, folders, This PC and Recycle Bin.
@@ -23,7 +37,7 @@
 - Made Personalize content scrollable rather than relying on a fixed-height card.
 - Expanded the one-time device summary with graphics, available RAM and system-drive capacity.
 - Bounded Start Menu shortcut discovery by depth and total result count, and skipped reparse-point folders.
-- Preserved the no-installer, no-startup, no-services, no-shell-takeover, no-boot-change and no-Defender-change safety boundaries.
+- Preserved the no-startup, no-services, no-shell-takeover, no-boot-change and no-Defender-change safety boundaries.
 
 ## 0.3.0 - 2026-11-26
 
