@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 
 [assembly: AssemblyTitle("AeroShell Desktop")]
-[assembly: AssemblyDescription("A Windows 12-inspired desktop launcher for Windows 10.")]
+[assembly: AssemblyDescription("A Windows 11-inspired desktop companion for Windows 10.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("AeroShell Community Project")]
 [assembly: AssemblyProduct("AeroShell Desktop")]
